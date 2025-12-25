@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { FileText, Clock, Trophy, CheckCircle, Award, Lock, ChevronRight, MessageCircle, BookOpen } from 'lucide-react';
+import { FileText, Clock, Trophy, CheckCircle, Award, Lock, ChevronRight, MessageCircle, BookOpen, Users } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +30,7 @@ interface ActivityItem {
 export default function Dashboard() {
   const { user, role } = useAuth();
   const [stats, setStats] = useState({ assignments: 0, completed: 0, studyTime: 0, rank: 0 });
+  const [teacherStats, setTeacherStats] = useState({ totalAssignments: 0, pendingDoubts: 0, todaySubmissions: 0, totalStudents: 0 });
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [earnedAchievements, setEarnedAchievements] = useState<string[]>([]);
@@ -40,15 +41,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      fetchStats();
+      fetchProfile();
       fetchWeeklyData();
       fetchLeaderboard();
       if (role === 'teacher') {
+        fetchTeacherStats();
         fetchRecentActivity();
       } else {
+        fetchStats();
         fetchAchievements();
       }
-      fetchProfile();
     }
   }, [user, role]);
 
@@ -80,6 +82,49 @@ export default function Dashboard() {
       completed: submissionsRes.count || 0,
       studyTime: Math.round(totalMinutes),
       rank: 1
+    });
+  };
+
+  const fetchTeacherStats = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Get assignments created by teacher
+    const { count: assignmentsCount } = await supabase
+      .from('assignments')
+      .select('id', { count: 'exact' })
+      .eq('teacher_id', user!.id);
+
+    // Get all doubts and check which have replies
+    const { data: allDoubts } = await supabase
+      .from('doubts')
+      .select('id');
+
+    const { data: repliedDoubts } = await supabase
+      .from('doubt_replies')
+      .select('doubt_id');
+
+    const repliedDoubtIds = new Set(repliedDoubts?.map(r => r.doubt_id) || []);
+    const pendingDoubtsCount = (allDoubts || []).filter(d => !repliedDoubtIds.has(d.id)).length;
+
+    // Get today's submissions
+    const { count: todaySubmissionsCount } = await supabase
+      .from('submissions')
+      .select('id', { count: 'exact' })
+      .gte('completed_at', today.toISOString());
+
+    // Get unique students (from submissions)
+    const { data: submissions } = await supabase
+      .from('submissions')
+      .select('student_id');
+
+    const uniqueStudents = new Set(submissions?.map(s => s.student_id) || []);
+
+    setTeacherStats({
+      totalAssignments: assignmentsCount || 0,
+      pendingDoubts: pendingDoubtsCount,
+      todaySubmissions: todaySubmissionsCount || 0,
+      totalStudents: uniqueStudents.size
     });
   };
 
@@ -237,33 +282,61 @@ export default function Dashboard() {
     return styles.default;
   };
 
+  // Teacher stats config
+  const teacherStatsConfig = [
+    { icon: FileText, value: teacherStats.totalAssignments, label: 'My Assignments', color: 'primary' },
+    { icon: MessageCircle, value: teacherStats.pendingDoubts, label: 'Pending Doubts', color: 'accent' },
+    { icon: CheckCircle, value: teacherStats.todaySubmissions, label: "Today's Submissions", color: 'success' },
+    { icon: Users, value: teacherStats.totalStudents, label: 'Active Students', color: 'secondary' },
+  ];
+
+  // Student stats config
+  const studentStatsConfig = [
+    { icon: FileText, value: stats.assignments, label: 'Total Assignments', color: 'primary' },
+    { icon: CheckCircle, value: stats.completed, label: 'Completed', color: 'success' },
+    { icon: Clock, value: `${stats.studyTime}m`, label: 'Study Time', color: 'secondary' },
+    { icon: Trophy, value: `#${stats.rank}`, label: 'Your Rank', color: 'accent' },
+  ];
+
+  const statsConfig = role === 'teacher' ? teacherStatsConfig : studentStatsConfig;
+
   return (
     <Layout title="Dashboard">
       <div className={styles.dashboard}>
         <motion.div className={styles.welcomeSection} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className={styles.welcomeContent}>
             <h1>Welcome back, {profileName?.split(' ')[0] || user?.user_metadata?.full_name?.split(' ')[0] || (role === 'teacher' ? 'Teacher' : 'Student')}!</h1>
-            <p>Track your progress and stay on top of your learning goals.</p>
+            <p>{role === 'teacher' ? 'Manage your classes and track student progress.' : 'Track your progress and stay on top of your learning goals.'}</p>
           </div>
           <div className={styles.quickStats}>
-            <div className={styles.quickStat}>
-              <div className={styles.quickStatValue}>{stats.completed}</div>
-              <div className={styles.quickStatLabel}>Completed</div>
-            </div>
-            <div className={styles.quickStat}>
-              <div className={styles.quickStatValue}>{Math.round(stats.studyTime / 60)}h</div>
-              <div className={styles.quickStatLabel}>Study Time</div>
-            </div>
+            {role === 'teacher' ? (
+              <>
+                <div className={styles.quickStat}>
+                  <div className={styles.quickStatValue}>{teacherStats.pendingDoubts}</div>
+                  <div className={styles.quickStatLabel}>Pending Doubts</div>
+                </div>
+                <div className={styles.quickStat}>
+                  <div className={styles.quickStatValue}>{teacherStats.todaySubmissions}</div>
+                  <div className={styles.quickStatLabel}>Today's Submissions</div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={styles.quickStat}>
+                  <div className={styles.quickStatValue}>{stats.completed}</div>
+                  <div className={styles.quickStatLabel}>Completed</div>
+                </div>
+                <div className={styles.quickStat}>
+                  <div className={styles.quickStatValue}>{Math.round(stats.studyTime / 60)}h</div>
+                  <div className={styles.quickStatLabel}>Study Time</div>
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 
         <div className={styles.statsGrid}>
-          {[
-            { icon: FileText, value: stats.assignments, label: 'Total Assignments', color: 'primary' },
-            { icon: CheckCircle, value: stats.completed, label: 'Completed', color: 'success' },
-            { icon: Clock, value: `${stats.studyTime}m`, label: 'Study Time', color: 'secondary' },
-            { icon: Trophy, value: `#${stats.rank}`, label: 'Your Rank', color: 'accent' },
-          ].map((stat, i) => (
+          {statsConfig.map((stat, i) => (
             <motion.div key={i} className={styles.statCard} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
               <div className={`${styles.statIcon} ${styles[stat.color]}`}><stat.icon size={24} /></div>
               <div className={styles.statContent}>
