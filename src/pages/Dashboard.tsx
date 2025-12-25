@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { FileText, Clock, Trophy, CheckCircle, Award, Lock, ChevronRight } from 'lucide-react';
+import { FileText, Clock, Trophy, CheckCircle, Award, Lock, ChevronRight, MessageCircle, BookOpen } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import styles from '@/styles/pages/Dashboard.module.css';
+import { formatDistanceToNow } from 'date-fns';
 
 // Achievement definitions (subset for widget)
 const ACHIEVEMENTS = [
@@ -18,6 +19,14 @@ const ACHIEVEMENTS = [
   { key: 'study_10h', title: 'Study Champion', icon: Award, color: '#ef4444', requirement: 10, type: 'study_hours' },
 ];
 
+interface ActivityItem {
+  id: string;
+  type: 'submission' | 'doubt';
+  studentName: string;
+  title: string;
+  timestamp: string;
+}
+
 export default function Dashboard() {
   const { user, role } = useAuth();
   const [stats, setStats] = useState({ assignments: 0, completed: 0, studyTime: 0, rank: 0 });
@@ -27,16 +36,21 @@ export default function Dashboard() {
   const [nextAchievement, setNextAchievement] = useState<any>(null);
   const [achievementProgress, setAchievementProgress] = useState(0);
   const [profileName, setProfileName] = useState<string | null>(null);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
     if (user) {
       fetchStats();
       fetchWeeklyData();
       fetchLeaderboard();
-      fetchAchievements();
+      if (role === 'teacher') {
+        fetchRecentActivity();
+      } else {
+        fetchAchievements();
+      }
       fetchProfile();
     }
-  }, [user]);
+  }, [user, role]);
 
   const fetchProfile = async () => {
     const { data } = await supabase
@@ -156,6 +170,66 @@ export default function Dashboard() {
     }
   };
 
+  const fetchRecentActivity = async () => {
+    // Fetch recent submissions
+    const { data: submissions } = await supabase
+      .from('submissions')
+      .select('id, student_id, assignment_id, completed_at')
+      .order('completed_at', { ascending: false })
+      .limit(10);
+
+    // Fetch recent doubts
+    const { data: doubts } = await supabase
+      .from('doubts')
+      .select('id, student_id, assignment_id, created_at, question')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    // Get unique student and assignment IDs
+    const studentIds = new Set<string>();
+    const assignmentIds = new Set<string>();
+    
+    submissions?.forEach(s => {
+      studentIds.add(s.student_id);
+      assignmentIds.add(s.assignment_id);
+    });
+    doubts?.forEach(d => {
+      studentIds.add(d.student_id);
+      assignmentIds.add(d.assignment_id);
+    });
+
+    // Fetch profiles and assignments
+    const [profilesRes, assignmentsRes] = await Promise.all([
+      supabase.from('profiles').select('id, full_name').in('id', Array.from(studentIds)),
+      supabase.from('assignments').select('id, title').in('id', Array.from(assignmentIds))
+    ]);
+
+    const profilesMap = new Map(profilesRes.data?.map(p => [p.id, p.full_name || 'Student']) || []);
+    const assignmentsMap = new Map(assignmentsRes.data?.map(a => [a.id, a.title]) || []);
+
+    // Combine and sort activities
+    const activities: ActivityItem[] = [
+      ...(submissions?.map(s => ({
+        id: s.id,
+        type: 'submission' as const,
+        studentName: profilesMap.get(s.student_id) || 'Student',
+        title: assignmentsMap.get(s.assignment_id) || 'Assignment',
+        timestamp: s.completed_at
+      })) || []),
+      ...(doubts?.map(d => ({
+        id: d.id,
+        type: 'doubt' as const,
+        studentName: profilesMap.get(d.student_id) || 'Student',
+        title: d.question.substring(0, 50) + (d.question.length > 50 ? '...' : ''),
+        timestamp: d.created_at
+      })) || [])
+    ];
+
+    // Sort by timestamp and take top 5
+    activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    setRecentActivity(activities.slice(0, 5));
+  };
+
   const getRankClass = (i: number) => {
     if (i === 0) return styles.gold;
     if (i === 1) return styles.silver;
@@ -243,7 +317,48 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Achievements Widget - Only show for students */}
+          {/* Teacher: Recent Activity Feed */}
+          {role === 'teacher' && (
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Recent Activity</h2>
+              </div>
+              <div className={styles.sectionContent}>
+                <div className={styles.activityList}>
+                  {recentActivity.length > 0 ? (
+                    recentActivity.map((activity) => (
+                      <div key={activity.id} className={styles.activityItem}>
+                        <div className={`${styles.activityIcon} ${styles[activity.type]}`}>
+                          {activity.type === 'submission' ? (
+                            <CheckCircle size={16} />
+                          ) : (
+                            <MessageCircle size={16} />
+                          )}
+                        </div>
+                        <div className={styles.activityInfo}>
+                          <div className={styles.activityText}>
+                            <span className={styles.activityStudent}>{activity.studentName}</span>
+                            {activity.type === 'submission' ? ' completed ' : ' asked about '}
+                            <span className={styles.activityTitle}>{activity.title}</span>
+                          </div>
+                          <div className={styles.activityTime}>
+                            {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={styles.noAchievements}>
+                      <BookOpen className={styles.emptyIcon} size={32} />
+                      <p>No recent activity</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Student: Achievements Widget */}
           {role !== 'teacher' && (
             <div className={styles.section}>
               <div className={styles.sectionHeader}>
