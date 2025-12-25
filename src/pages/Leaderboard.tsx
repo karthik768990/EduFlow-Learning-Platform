@@ -30,18 +30,100 @@ interface LeaderboardEntry {
   highest_achievement: { label: string; icon: string } | null;
 }
 
+interface TopAchiever {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  achievement_key: string;
+  achievement: { label: string; icon: string; priority: number };
+  count: number;
+}
+
 type TimePeriod = 'all' | 'week' | 'month';
 
 export default function Leaderboard() {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [topAchievers, setTopAchievers] = useState<TopAchiever[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overall' | 'assignments' | 'study'>('overall');
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
 
   useEffect(() => {
     fetchLeaderboard();
+    fetchTopAchievers();
   }, [timePeriod]);
+
+  const fetchTopAchievers = async () => {
+    // Fetch all achievements with user info
+    const { data: allAchievements } = await supabase
+      .from('user_achievements')
+      .select('user_id, achievement_key');
+    
+    if (!allAchievements || allAchievements.length === 0) {
+      setTopAchievers([]);
+      return;
+    }
+
+    // Count achievements per user and find highest priority one
+    const userAchievementData: Record<string, { count: number; highest: { key: string; priority: number } }> = {};
+    
+    allAchievements.forEach(a => {
+      const achievement = ACHIEVEMENTS[a.achievement_key];
+      if (!achievement) return;
+      
+      if (!userAchievementData[a.user_id]) {
+        userAchievementData[a.user_id] = { count: 0, highest: { key: a.achievement_key, priority: achievement.priority } };
+      }
+      
+      userAchievementData[a.user_id].count++;
+      
+      if (achievement.priority > userAchievementData[a.user_id].highest.priority) {
+        userAchievementData[a.user_id].highest = { key: a.achievement_key, priority: achievement.priority };
+      }
+    });
+
+    const userIds = Object.keys(userAchievementData);
+    
+    // Fetch profiles
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, email')
+      .in('id', userIds);
+
+    // Build top achievers list sorted by highest priority achievement
+    const achievers: TopAchiever[] = userIds.map(userId => {
+      const profile = profiles?.find(p => p.id === userId);
+      const data = userAchievementData[userId];
+      const achievement = ACHIEVEMENTS[data.highest.key];
+      
+      let displayName = 'Student';
+      if (profile?.full_name) {
+        displayName = profile.full_name;
+      } else if (profile?.email) {
+        displayName = profile.email.split('@')[0];
+      }
+      
+      return {
+        user_id: userId,
+        full_name: displayName,
+        avatar_url: profile?.avatar_url || null,
+        achievement_key: data.highest.key,
+        achievement: achievement,
+        count: data.count
+      };
+    });
+
+    // Sort by achievement priority (highest first), then by count
+    achievers.sort((a, b) => {
+      if (b.achievement.priority !== a.achievement.priority) {
+        return b.achievement.priority - a.achievement.priority;
+      }
+      return b.count - a.count;
+    });
+
+    setTopAchievers(achievers.slice(0, 5)); // Top 5 achievers
+  };
 
   const getStartDate = (): Date | null => {
     const now = new Date();
@@ -229,6 +311,52 @@ export default function Leaderboard() {
                   <span className={styles.statLabel}>Points</span>
                 </div>
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Top Achievers Showcase */}
+        {topAchievers.length > 0 && (
+          <motion.div
+            className={styles.achieversSection}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className={styles.achieversSectionHeader}>
+              <Award size={20} className={styles.achieversIcon} />
+              <h2 className={styles.achieversSectionTitle}>Top Achievers</h2>
+            </div>
+            <div className={styles.achieversGrid}>
+              {topAchievers.map((achiever, index) => (
+                <motion.div
+                  key={achiever.user_id}
+                  className={`${styles.achieverCard} ${achiever.user_id === user?.id ? styles.currentUserAchiever : ''}`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 + index * 0.05 }}
+                >
+                  <div className={styles.achieverRank}>#{index + 1}</div>
+                  <div className={styles.achieverAvatar}>
+                    {achiever.avatar_url ? (
+                      <img src={achiever.avatar_url} alt={achiever.full_name} />
+                    ) : (
+                      <div className={styles.achieverAvatarPlaceholder}>
+                        {achiever.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+                    )}
+                    <span className={styles.achieverBadgeIcon}>{achiever.achievement.icon}</span>
+                  </div>
+                  <div className={styles.achieverInfo}>
+                    <span className={styles.achieverName}>{achiever.full_name}</span>
+                    <span className={styles.achieverBadge}>{achiever.achievement.label}</span>
+                  </div>
+                  <div className={styles.achieverCount}>
+                    <span className={styles.achieverCountValue}>{achiever.count}</span>
+                    <span className={styles.achieverCountLabel}>badges</span>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </motion.div>
         )}
