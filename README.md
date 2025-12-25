@@ -436,28 +436,17 @@ VALUES ('user-uuid-here', 'teacher');
 
 ---
 
-## 🔧 Lovable Development
-
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
-
-### Edit with Lovable
-
-Visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting. Changes are committed automatically.
 
 ### Edit Locally
 
 ```bash
-git clone <YOUR_GIT_URL>
-cd <YOUR_PROJECT_NAME>
+git clone 
+cd EDuFlow-Learning-Platform
 npm install
 npm run dev
 ```
 
-### Deploy with Lovable
 
-Open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click **Share** > **Publish**.
-
----
 
 ## 🤝 Contributing
 
