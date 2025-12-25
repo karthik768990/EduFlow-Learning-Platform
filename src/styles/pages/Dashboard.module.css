@@ -380,6 +380,74 @@
   font-size: var(--text-sm);
 }
 
+/* Activity Feed (Teacher) */
+.activityList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.activityItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.activityItem:hover {
+  background-color: var(--color-gray-100);
+}
+
+.activityIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activityIcon.submission {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--color-success);
+}
+
+.activityIcon.doubt {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--color-primary);
+}
+
+.activityInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.activityText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.activityStudent {
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+}
+
+.activityTitle {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.activityTime {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+}
+
 /* Achievements Widget */
 .achievementsList {
   display: flex;
