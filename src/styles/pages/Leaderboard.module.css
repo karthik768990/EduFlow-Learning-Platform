@@ -74,6 +74,161 @@
   opacity: 0.8;
 }
 
+/* Top Achievers Showcase */
+.achieversSection {
+  background: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-md);
+}
+
+.achieversSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.achieversIcon {
+  color: var(--color-accent, hsl(45, 93%, 47%));
+}
+
+.achieversSectionTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.achieversGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.achieverCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary, var(--bg-secondary)) 100%);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-normal);
+}
+
+.achieverCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-accent, hsl(45, 93%, 47%));
+}
+
+.achieverCard.currentUserAchiever {
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100, var(--color-primary-50)) 100%);
+  border-color: var(--color-primary);
+}
+
+.achieverRank {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  color: var(--text-tertiary);
+}
+
+.achieverAvatar {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+
+.achieverAvatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 2px solid var(--color-accent, hsl(45, 93%, 47%));
+}
+
+.achieverAvatarPlaceholder {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-inverse);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  border: 2px solid var(--color-accent, hsl(45, 93%, 47%));
+}
+
+.achieverBadgeIcon {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.achieverInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.achieverName {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.achieverBadge {
+  display: inline-flex;
+  padding: 0.15rem 0.5rem;
+  background: linear-gradient(135deg, var(--color-accent, hsl(45, 93%, 47%)) 0%, var(--color-accent-light, hsl(45, 93%, 60%)) 100%);
+  color: #1a1a1a;
+  font-size: 0.6rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.achieverCount {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.achieverCountValue {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+}
+
+.achieverCountLabel {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
 /* Time Period Filter */
 .filterRow {
   display: flex;
@@ -402,6 +557,19 @@
   .score {
     font-size: var(--text-lg);
   }
+  
+  .achieversGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .achieverCard {
+    padding: var(--space-3);
+  }
+  
+  .achieverAvatar {
+    width: 48px;
+    height: 48px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -426,5 +594,29 @@
   
   .userName {
     font-size: var(--text-sm);
+  }
+  
+  .achieversGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+  
+  .achieverCard {
+    padding: var(--space-2);
+  }
+  
+  .achieverAvatar {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .achieverName {
+    font-size: var(--text-xs);
+    max-width: 80px;
+  }
+  
+  .achieverBadge {
+    font-size: 0.5rem;
+    padding: 0.1rem 0.35rem;
   }
 }
