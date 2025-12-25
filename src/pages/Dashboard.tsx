@@ -130,8 +130,52 @@ export default function Dashboard() {
 
   const fetchWeeklyData = async () => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const data = days.map((day, i) => ({ day, hours: Math.random() * 4 + 1 }));
-    setWeeklyData(data);
+    
+    // Get date range for the past 7 days
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 6);
+    weekAgo.setHours(0, 0, 0, 0);
+
+    // Fetch study sessions for the past week
+    const { data: sessions } = await supabase
+      .from('study_sessions')
+      .select('start_time, end_time')
+      .eq('user_id', user!.id)
+      .not('end_time', 'is', null)
+      .gte('start_time', weekAgo.toISOString())
+      .lte('start_time', today.toISOString());
+
+    // Initialize data for each day of the week (starting from today going back)
+    const weekData: { [key: number]: number } = {};
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - (6 - i));
+      weekData[date.getDay()] = 0;
+    }
+
+    // Aggregate study hours per day
+    (sessions || []).forEach(session => {
+      const startDate = new Date(session.start_time);
+      const endDate = new Date(session.end_time!);
+      const dayOfWeek = startDate.getDay();
+      const hours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      weekData[dayOfWeek] = (weekData[dayOfWeek] || 0) + hours;
+    });
+
+    // Build ordered array for the past 7 days
+    const orderedData = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - (6 - i));
+      const dayIndex = date.getDay();
+      orderedData.push({
+        day: days[dayIndex],
+        hours: Math.round(weekData[dayIndex] * 100) / 100
+      });
+    }
+
+    setWeeklyData(orderedData);
   };
 
   const fetchLeaderboard = async () => {
