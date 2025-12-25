@@ -12,6 +12,8 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   setUserRole: (role: 'student' | 'teacher') => Promise<void>;
 }
@@ -83,6 +85,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth?mode=reset`
+    });
+    return { error };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return { error };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setRole(null);
@@ -100,7 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, setUserRole }}>
+    <AuthContext.Provider value={{ 
+      user, session, role, loading, 
+      signInWithGoogle, signInWithEmail, signUpWithEmail, 
+      resetPassword, updatePassword,
+      signOut, setUserRole 
+    }}>
       {children}
     </AuthContext.Provider>
   );
