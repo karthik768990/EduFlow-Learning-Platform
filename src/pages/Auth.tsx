@@ -48,6 +48,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; confirmPassword?: string }>({});
 
   // Check if coming from password reset email
@@ -146,7 +147,7 @@ export default function Auth() {
     try {
       const { error } = authMode === 'signup' 
         ? await signUpWithEmail(email, password)
-        : await signInWithEmail(email, password);
+        : await signInWithEmail(email, password, rememberMe);
       
       if (error) {
         setError(getErrorMessage(error));
@@ -580,6 +581,26 @@ export default function Auth() {
                       </div>
                     )}
                   </motion.div>
+                  
+                  {authMode === 'signin' && (
+                    <motion.div 
+                      className={styles.rememberRow}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.12 }}
+                    >
+                      <label className={styles.checkboxLabel}>
+                        <input
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(e) => setRememberMe(e.target.checked)}
+                          className={styles.checkbox}
+                        />
+                        <span className={styles.checkboxCustom} />
+                        <span className={styles.checkboxText}>Remember me</span>
+                      </label>
+                    </motion.div>
+                  )}
                   
                   <motion.button 
                     type="submit"

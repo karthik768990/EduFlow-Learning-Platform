@@ -10,7 +10,7 @@ interface AuthContextType {
   role: Role;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithEmail: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
@@ -71,7 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
-  const signInWithEmail = async (email: string, password: string) => {
+  const signInWithEmail = async (email: string, password: string, rememberMe: boolean = true) => {
+    // If not remembering, we'll handle session cleanup on browser close via storage
+    if (!rememberMe) {
+      // Store a flag to clear session on browser close
+      sessionStorage.setItem('clearSessionOnClose', 'true');
+    } else {
+      sessionStorage.removeItem('clearSessionOnClose');
+    }
+    
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   };
