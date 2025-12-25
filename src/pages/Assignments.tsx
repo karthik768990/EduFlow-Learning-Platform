@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Calendar, Clock, CheckCircle, Edit2, Trash2, X, Send, FileText } from 'lucide-react';
-import { format, isPast, formatDistanceToNow } from 'date-fns';
+import { Plus, Calendar as CalendarIcon, Clock, CheckCircle, Edit2, Trash2, X, Send, FileText, List, Grid3X3 } from 'lucide-react';
+import { format, isPast, formatDistanceToNow, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,12 +36,28 @@ export default function Assignments() {
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [reflection, setReflection] = useState('');
   
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  
   // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     due_date: ''
   });
+
+  // Calendar helpers
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const calendarStart = startOfWeek(monthStart);
+    const calendarEnd = endOfWeek(monthEnd);
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  }, [currentMonth]);
+
+  const getAssignmentsForDay = (day: Date) => {
+    return assignments.filter(a => a.due_date && isSameDay(new Date(a.due_date), day));
+  };
 
   useEffect(() => {
     fetchAssignments();
@@ -207,12 +223,30 @@ export default function Assignments() {
                 : `${submissions.length} of ${assignments.length} completed`}
             </p>
           </div>
-          {role === 'teacher' && (
-            <button className={styles.createButton} onClick={openCreateModal}>
-              <Plus size={20} />
-              Create Assignment
-            </button>
-          )}
+          <div className={styles.headerActions}>
+            <div className={styles.viewToggle}>
+              <button 
+                className={`${styles.viewButton} ${viewMode === 'list' ? styles.active : ''}`}
+                onClick={() => setViewMode('list')}
+                aria-label="List view"
+              >
+                <List size={18} />
+              </button>
+              <button 
+                className={`${styles.viewButton} ${viewMode === 'calendar' ? styles.active : ''}`}
+                onClick={() => setViewMode('calendar')}
+                aria-label="Calendar view"
+              >
+                <Grid3X3 size={18} />
+              </button>
+            </div>
+            {role === 'teacher' && (
+              <button className={styles.createButton} onClick={openCreateModal}>
+                <Plus size={20} />
+                Create Assignment
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -232,6 +266,65 @@ export default function Assignments() {
               </button>
             )}
           </div>
+        ) : viewMode === 'calendar' ? (
+          <motion.div 
+            className={styles.calendarContainer}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className={styles.calendarHeader}>
+              <button 
+                className={styles.calendarNavButton}
+                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              >
+                ←
+              </button>
+              <h2 className={styles.calendarMonth}>
+                {format(currentMonth, 'MMMM yyyy')}
+              </h2>
+              <button 
+                className={styles.calendarNavButton}
+                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              >
+                →
+              </button>
+            </div>
+            
+            <div className={styles.calendarGrid}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className={styles.calendarDayHeader}>{day}</div>
+              ))}
+              
+              {calendarDays.map((day, index) => {
+                const dayAssignments = getAssignmentsForDay(day);
+                const isCurrentMonth = isSameMonth(day, currentMonth);
+                const isToday = isSameDay(day, new Date());
+                
+                return (
+                  <div 
+                    key={index}
+                    className={`${styles.calendarDay} ${!isCurrentMonth ? styles.outsideMonth : ''} ${isToday ? styles.today : ''}`}
+                  >
+                    <span className={styles.dayNumber}>{format(day, 'd')}</span>
+                    <div className={styles.dayAssignments}>
+                      {dayAssignments.slice(0, 3).map(assignment => (
+                        <div 
+                          key={assignment.id}
+                          className={`${styles.calendarAssignment} ${isCompleted(assignment.id) ? styles.calendarCompleted : isPast(new Date(assignment.due_date!)) ? styles.calendarOverdue : ''}`}
+                          title={assignment.title}
+                        >
+                          {assignment.title}
+                        </div>
+                      ))}
+                      {dayAssignments.length > 3 && (
+                        <span className={styles.moreAssignments}>+{dayAssignments.length - 3} more</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
         ) : (
           <div className={styles.grid}>
             <AnimatePresence>
@@ -256,7 +349,7 @@ export default function Assignments() {
                   <div className={styles.cardMeta}>
                     {assignment.due_date && (
                       <div className={styles.metaItem}>
-                        <Calendar size={14} />
+                        <CalendarIcon size={14} />
                         <span>Due: {format(new Date(assignment.due_date), 'MMM d, yyyy')}</span>
                       </div>
                     )}
