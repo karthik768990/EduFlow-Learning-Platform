@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Medal, Award, Clock, CheckCircle, TrendingUp, User } from 'lucide-react';
+import { Trophy, Medal, Award, Clock, CheckCircle, TrendingUp, Calendar } from 'lucide-react';
+import { startOfWeek, startOfMonth, isAfter } from 'date-fns';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,29 +16,50 @@ interface LeaderboardEntry {
   total_score: number;
 }
 
+type TimePeriod = 'all' | 'week' | 'month';
+
 export default function Leaderboard() {
   const { user } = useAuth();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overall' | 'assignments' | 'study'>('overall');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('all');
 
   useEffect(() => {
     fetchLeaderboard();
-  }, []);
+  }, [timePeriod]);
+
+  const getStartDate = (): Date | null => {
+    const now = new Date();
+    if (timePeriod === 'week') {
+      return startOfWeek(now, { weekStartsOn: 1 });
+    } else if (timePeriod === 'month') {
+      return startOfMonth(now);
+    }
+    return null;
+  };
 
   const fetchLeaderboard = async () => {
     setLoading(true);
     
+    const startDate = getStartDate();
+    
     // Get all submissions grouped by student
-    const { data: submissions } = await supabase
-      .from('submissions')
-      .select('student_id');
+    let submissionsQuery = supabase.from('submissions').select('student_id, completed_at');
+    if (startDate) {
+      submissionsQuery = submissionsQuery.gte('completed_at', startDate.toISOString());
+    }
+    const { data: submissions } = await submissionsQuery;
     
     // Get all completed study sessions
-    const { data: sessions } = await supabase
+    let sessionsQuery = supabase
       .from('study_sessions')
       .select('user_id, start_time, end_time')
       .not('end_time', 'is', null);
+    if (startDate) {
+      sessionsQuery = sessionsQuery.gte('start_time', startDate.toISOString());
+    }
+    const { data: sessions } = await sessionsQuery;
     
     // Count submissions per student
     const submissionCounts: Record<string, number> = {};
@@ -166,6 +188,26 @@ export default function Leaderboard() {
             </div>
           </motion.div>
         )}
+
+        {/* Time Period Filter */}
+        <div className={styles.filterRow}>
+          <div className={styles.periodFilter}>
+            <Calendar size={16} className={styles.filterIcon} />
+            {[
+              { id: 'all', label: 'All Time' },
+              { id: 'week', label: 'This Week' },
+              { id: 'month', label: 'This Month' },
+            ].map(period => (
+              <button
+                key={period.id}
+                className={`${styles.periodButton} ${timePeriod === period.id ? styles.active : ''}`}
+                onClick={() => setTimePeriod(period.id as TimePeriod)}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Tabs */}
         <div className={styles.tabs}>
