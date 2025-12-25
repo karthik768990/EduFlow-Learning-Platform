@@ -49,18 +49,46 @@ export default function Dashboard() {
   };
 
   const fetchLeaderboard = async () => {
-    const { data } = await supabase
+    // Get submission counts per student
+    const { data: submissions } = await supabase
       .from('submissions')
-      .select('student_id, profiles!submissions_student_id_fkey(full_name, avatar_url)')
-      .limit(5);
+      .select('student_id');
     
-    const grouped = (data || []).reduce((acc: any, item) => {
-      acc[item.student_id] = acc[item.student_id] || { ...item.profiles, count: 0 };
-      acc[item.student_id].count++;
-      return acc;
-    }, {});
-    
-    setLeaderboard(Object.values(grouped).sort((a: any, b: any) => b.count - a.count).slice(0, 5));
+    if (!submissions || submissions.length === 0) {
+      setLeaderboard([]);
+      return;
+    }
+
+    // Count submissions per student
+    const counts: Record<string, number> = {};
+    submissions.forEach(s => {
+      counts[s.student_id] = (counts[s.student_id] || 0) + 1;
+    });
+
+    // Get top 5 student IDs
+    const topStudentIds = Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([id]) => id);
+
+    // Fetch profiles for top students
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', topStudentIds);
+
+    // Combine data
+    const leaderboardData = topStudentIds.map(studentId => {
+      const profile = profiles?.find(p => p.id === studentId);
+      return {
+        id: studentId,
+        full_name: profile?.full_name || 'Student',
+        avatar_url: profile?.avatar_url,
+        count: counts[studentId]
+      };
+    });
+
+    setLeaderboard(leaderboardData);
   };
 
   const getRankClass = (i: number) => {
