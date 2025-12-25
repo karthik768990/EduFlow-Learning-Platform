@@ -1,0 +1,227 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Stats Card */
+.statsCard {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7));
+  border-radius: 16px;
+  padding: 2rem;
+  color: hsl(var(--primary-foreground));
+}
+
+.progressCircle {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+}
+
+.progressCircle svg {
+  width: 100%;
+  height: 100%;
+}
+
+.progressBg {
+  opacity: 0.2;
+}
+
+.progressFill {
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.progressText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progressCount {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.progressTotal {
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.statsInfo h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.statsInfo p {
+  opacity: 0.9;
+  margin-bottom: 1rem;
+}
+
+.quickStats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.quickStat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+/* Achievements Grid */
+.achievementsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.achievementCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.achievementCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.achievementCard.earned {
+  border-color: hsl(var(--primary) / 0.3);
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.05), transparent);
+}
+
+.achievementCard.locked {
+  opacity: 0.7;
+}
+
+.iconWrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.achievementInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.achievementTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 0.25rem;
+}
+
+.achievementDesc {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.75rem;
+}
+
+.progressSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progressBar {
+  flex: 1;
+  height: 6px;
+  background: var(--muted);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFillBar {
+  height: 100%;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary) / 0.7));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progressLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.earnedBadge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  color: hsl(142 76% 36%);
+}
+
+/* Loading State */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  color: var(--muted-foreground);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .statsCard {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .quickStats {
+    justify-content: center;
+  }
+  
+  .achievementsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .progressCircle {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .progressCount {
+    font-size: 1.5rem;
+  }
+}
