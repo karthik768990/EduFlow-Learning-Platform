@@ -1,23 +1,38 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { FileText, Clock, Trophy, CheckCircle, TrendingUp } from 'lucide-react';
+import { FileText, Clock, Trophy, CheckCircle, Award, Lock, ChevronRight } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import styles from '@/styles/pages/Dashboard.module.css';
+
+// Achievement definitions (subset for widget)
+const ACHIEVEMENTS = [
+  { key: 'first_assignment', title: 'First Steps', icon: CheckCircle, color: '#22c55e', requirement: 1, type: 'assignments' },
+  { key: 'assignments_5', title: 'Getting Started', icon: FileText, color: '#3b82f6', requirement: 5, type: 'assignments' },
+  { key: 'assignments_10', title: 'Dedicated Learner', icon: Award, color: '#8b5cf6', requirement: 10, type: 'assignments' },
+  { key: 'study_1h', title: 'Time Well Spent', icon: Clock, color: '#06b6d4', requirement: 1, type: 'study_hours' },
+  { key: 'study_5h', title: 'Focused Mind', icon: Trophy, color: '#f97316', requirement: 5, type: 'study_hours' },
+  { key: 'study_10h', title: 'Study Champion', icon: Award, color: '#ef4444', requirement: 10, type: 'study_hours' },
+];
 
 export default function Dashboard() {
   const { user, role } = useAuth();
   const [stats, setStats] = useState({ assignments: 0, completed: 0, studyTime: 0, rank: 0 });
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [earnedAchievements, setEarnedAchievements] = useState<string[]>([]);
+  const [nextAchievement, setNextAchievement] = useState<any>(null);
+  const [achievementProgress, setAchievementProgress] = useState(0);
 
   useEffect(() => {
     if (user) {
       fetchStats();
       fetchWeeklyData();
       fetchLeaderboard();
+      fetchAchievements();
     }
   }, [user]);
 
@@ -89,6 +104,44 @@ export default function Dashboard() {
     });
 
     setLeaderboard(leaderboardData);
+  };
+
+  const fetchAchievements = async () => {
+    // Fetch earned achievements
+    const { data: achievements } = await supabase
+      .from('user_achievements')
+      .select('achievement_key, earned_at')
+      .eq('user_id', user!.id)
+      .order('earned_at', { ascending: false });
+    
+    const earnedKeys = (achievements || []).map(a => a.achievement_key);
+    setEarnedAchievements(earnedKeys);
+    
+    // Get user stats for progress calculation
+    const [submissionsRes, sessionsRes] = await Promise.all([
+      supabase.from('submissions').select('id').eq('student_id', user!.id),
+      supabase.from('study_sessions').select('start_time, end_time').eq('user_id', user!.id).not('end_time', 'is', null)
+    ]);
+    
+    const completedAssignments = submissionsRes.data?.length || 0;
+    const studyMinutes = (sessionsRes.data || []).reduce((acc, s) => {
+      return acc + (new Date(s.end_time!).getTime() - new Date(s.start_time).getTime()) / 60000;
+    }, 0);
+    const studyHours = studyMinutes / 60;
+    
+    // Find next achievement to unlock
+    const unlockedAchievements = ACHIEVEMENTS.filter(a => !earnedKeys.includes(a.key));
+    if (unlockedAchievements.length > 0) {
+      // Sort by closest to completion
+      const sorted = unlockedAchievements.map(a => {
+        const current = a.type === 'assignments' ? completedAssignments : studyHours;
+        const progress = Math.min(100, (current / a.requirement) * 100);
+        return { ...a, progress, current };
+      }).sort((a, b) => b.progress - a.progress);
+      
+      setNextAchievement(sorted[0]);
+      setAchievementProgress(sorted[0].progress);
+    }
   };
 
   const getRankClass = (i: number) => {
@@ -175,6 +228,76 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Achievements Widget */}
+          <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Achievements</h2>
+              <Link to="/achievements" className={styles.viewAllLink}>
+                View All <ChevronRight size={16} />
+              </Link>
+            </div>
+            <div className={styles.sectionContent}>
+              {/* Recent Achievements */}
+              <div className={styles.achievementsList}>
+                {earnedAchievements.length > 0 ? (
+                  ACHIEVEMENTS.filter(a => earnedAchievements.includes(a.key))
+                    .slice(0, 3)
+                    .map((achievement) => {
+                      const Icon = achievement.icon;
+                      return (
+                        <div key={achievement.key} className={styles.achievementItem}>
+                          <div 
+                            className={styles.achievementIcon}
+                            style={{ background: `linear-gradient(135deg, ${achievement.color}, ${achievement.color}80)` }}
+                          >
+                            <Icon size={18} color="white" />
+                          </div>
+                          <div className={styles.achievementInfo}>
+                            <div className={styles.achievementTitle}>{achievement.title}</div>
+                            <div className={styles.achievementUnlocked}>Unlocked!</div>
+                          </div>
+                        </div>
+                      );
+                    })
+                ) : (
+                  <div className={styles.noAchievements}>
+                    <Award className={styles.emptyIcon} size={32} />
+                    <p>No achievements yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Next Achievement Progress */}
+              {nextAchievement && (
+                <div className={styles.nextAchievement}>
+                  <div className={styles.nextAchievementHeader}>
+                    <Lock size={14} />
+                    <span>Next Achievement</span>
+                  </div>
+                  <div className={styles.nextAchievementContent}>
+                    <div 
+                      className={styles.nextAchievementIconLocked}
+                    >
+                      <nextAchievement.icon size={20} />
+                    </div>
+                    <div className={styles.nextAchievementDetails}>
+                      <div className={styles.nextAchievementTitle}>{nextAchievement.title}</div>
+                      <div className={styles.nextAchievementProgress}>
+                        <div className={styles.progressBar}>
+                          <div 
+                            className={styles.progressFill}
+                            style={{ width: `${achievementProgress}%` }}
+                          />
+                        </div>
+                        <span className={styles.progressText}>{Math.round(achievementProgress)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
