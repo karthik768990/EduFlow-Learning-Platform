@@ -1,18 +1,15 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { format, formatDistanceToNow, subDays, startOfDay, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTimer } from '@/contexts/TimerContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { playWorkCompleteSound, playBreakCompleteSound } from '@/lib/audio';
 import styles from '@/styles/pages/StudyTimer.module.css';
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'History', 'Programming', 'Art', 'Other'];
-const WORK_TIME = 25 * 60; // 25 minutes in seconds
-const BREAK_TIME = 5 * 60; // 5 minutes in seconds
 
 interface Session {
   id: string;
@@ -24,30 +21,32 @@ interface Session {
 
 export default function StudyTimer() {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { 
+    timeLeft, 
+    isRunning, 
+    isBreak, 
+    selectedSubject, 
+    setSelectedSubject,
+    startTimer,
+    pauseTimer,
+    resetTimer,
+    formatTime,
+    progress,
+    WORK_TIME,
+    BREAK_TIME
+  } = useTimer();
   
-  const [selectedSubject, setSelectedSubject] = useState('Mathematics');
-  const [timeLeft, setTimeLeft] = useState(WORK_TIME);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isBreak, setIsBreak] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [weeklyData, setWeeklyData] = useState<{ day: string; minutes: number; date: Date }[]>([]);
   const [subjectData, setSubjectData] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [totalToday, setTotalToday] = useState(0);
   const [sessionsToday, setSessionsToday] = useState(0);
-  
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<Date | null>(null);
 
   useEffect(() => {
     fetchSessions();
     fetchWeeklyData();
     fetchSubjectData();
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [user]);
+  }, [user, isRunning]);
 
   const SUBJECT_COLORS: Record<string, string> = {
     'Mathematics': '#2563eb',
@@ -161,138 +160,6 @@ export default function StudyTimer() {
     setSubjectData(chartData);
   };
 
-  const startTimer = useCallback(async () => {
-    if (!selectedSubject) {
-      toast({ title: 'Select a subject', description: 'Please select a subject before starting', variant: 'destructive' });
-      return;
-    }
-    
-    setIsRunning(true);
-    startTimeRef.current = new Date();
-    
-    // Create session in database
-    if (!isBreak) {
-      const { data, error } = await supabase
-        .from('study_sessions')
-        .insert({
-          user_id: user!.id,
-          subject: selectedSubject,
-          is_active: true
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        toast({ title: 'Error', description: 'Failed to start session', variant: 'destructive' });
-        setIsRunning(false);
-        return;
-      }
-      
-      setCurrentSessionId(data.id);
-    }
-    
-    intervalRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          // Timer complete
-          clearInterval(intervalRef.current!);
-          handleTimerComplete();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [selectedSubject, isBreak, user]);
-
-  const handleTimerComplete = async () => {
-    setIsRunning(false);
-    
-    if (!isBreak && currentSessionId) {
-      // End the work session
-      await supabase
-        .from('study_sessions')
-        .update({ end_time: new Date().toISOString(), is_active: false })
-        .eq('id', currentSessionId);
-      
-      // Play work complete sound
-      playWorkCompleteSound();
-      
-      toast({ 
-        title: 'Great work! 🎉', 
-        description: 'Pomodoro complete! Take a 5 minute break.' 
-      });
-      
-      setCurrentSessionId(null);
-      fetchSessions();
-      fetchWeeklyData();
-      fetchSubjectData();
-      
-      // Switch to break
-      setIsBreak(true);
-      setTimeLeft(BREAK_TIME);
-    } else {
-      // Break complete - play break complete sound
-      playBreakCompleteSound();
-      
-      toast({ 
-        title: 'Break over!', 
-        description: 'Ready for another focused session?' 
-      });
-      
-      setIsBreak(false);
-      setTimeLeft(WORK_TIME);
-    }
-  };
-
-  const pauseTimer = async () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    setIsRunning(false);
-    
-    // End current session if pausing during work
-    if (!isBreak && currentSessionId) {
-      await supabase
-        .from('study_sessions')
-        .update({ end_time: new Date().toISOString(), is_active: false })
-        .eq('id', currentSessionId);
-      
-      setCurrentSessionId(null);
-      fetchSessions();
-    }
-  };
-
-  const resetTimer = async () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    
-    setIsRunning(false);
-    setIsBreak(false);
-    setTimeLeft(WORK_TIME);
-    
-    // End current session if active
-    if (currentSessionId) {
-      await supabase
-        .from('study_sessions')
-        .update({ end_time: new Date().toISOString(), is_active: false })
-        .eq('id', currentSessionId);
-      
-      setCurrentSessionId(null);
-      fetchSessions();
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const progress = isBreak 
-    ? ((BREAK_TIME - timeLeft) / BREAK_TIME) * 100
-    : ((WORK_TIME - timeLeft) / WORK_TIME) * 100;
-  
   const circumference = 2 * Math.PI * 120;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
