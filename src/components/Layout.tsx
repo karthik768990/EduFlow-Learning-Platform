@@ -1,8 +1,9 @@
 import { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award, Sun, Moon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import styles from '@/styles/components/Sidebar.module.css';
 
 interface LayoutProps {
@@ -12,6 +13,7 @@ interface LayoutProps {
 
 export default function Layout({ children, title }: LayoutProps) {
   const { user, role, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -89,6 +91,13 @@ export default function Layout({ children, title }: LayoutProps) {
       <main className={styles.mainContent}>
         <header className={styles.header}>
           <h1 className={styles.pageTitle}>{title}</h1>
+          <button 
+            className={styles.themeToggle}
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
         </header>
         <motion.div 
           className={styles.contentWrapper}
