@@ -243,75 +243,77 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Achievements Widget */}
-          <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <h2 className={styles.sectionTitle}>Achievements</h2>
-              <Link to="/achievements" className={styles.viewAllLink}>
-                View All <ChevronRight size={16} />
-              </Link>
-            </div>
-            <div className={styles.sectionContent}>
-              {/* Recent Achievements */}
-              <div className={styles.achievementsList}>
-                {earnedAchievements.length > 0 ? (
-                  ACHIEVEMENTS.filter(a => earnedAchievements.includes(a.key))
-                    .slice(0, 3)
-                    .map((achievement) => {
-                      const Icon = achievement.icon;
-                      return (
-                        <div key={achievement.key} className={styles.achievementItem}>
-                          <div 
-                            className={styles.achievementIcon}
-                            style={{ background: `linear-gradient(135deg, ${achievement.color}, ${achievement.color}80)` }}
-                          >
-                            <Icon size={18} color="white" />
-                          </div>
-                          <div className={styles.achievementInfo}>
-                            <div className={styles.achievementTitle}>{achievement.title}</div>
-                            <div className={styles.achievementUnlocked}>Unlocked!</div>
-                          </div>
-                        </div>
-                      );
-                    })
-                ) : (
-                  <div className={styles.noAchievements}>
-                    <Award className={styles.emptyIcon} size={32} />
-                    <p>No achievements yet</p>
-                  </div>
-                )}
+          {/* Achievements Widget - Only show for students */}
+          {role !== 'teacher' && (
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h2 className={styles.sectionTitle}>Achievements</h2>
+                <Link to="/achievements" className={styles.viewAllLink}>
+                  View All <ChevronRight size={16} />
+                </Link>
               </div>
-
-              {/* Next Achievement Progress */}
-              {nextAchievement && (
-                <div className={styles.nextAchievement}>
-                  <div className={styles.nextAchievementHeader}>
-                    <Lock size={14} />
-                    <span>Next Achievement</span>
-                  </div>
-                  <div className={styles.nextAchievementContent}>
-                    <div 
-                      className={styles.nextAchievementIconLocked}
-                    >
-                      <nextAchievement.icon size={20} />
+              <div className={styles.sectionContent}>
+                {/* Recent Achievements */}
+                <div className={styles.achievementsList}>
+                  {earnedAchievements.length > 0 ? (
+                    ACHIEVEMENTS.filter(a => earnedAchievements.includes(a.key))
+                      .slice(0, 3)
+                      .map((achievement) => {
+                        const Icon = achievement.icon;
+                        return (
+                          <div key={achievement.key} className={styles.achievementItem}>
+                            <div 
+                              className={styles.achievementIcon}
+                              style={{ background: `linear-gradient(135deg, ${achievement.color}, ${achievement.color}80)` }}
+                            >
+                              <Icon size={18} color="white" />
+                            </div>
+                            <div className={styles.achievementInfo}>
+                              <div className={styles.achievementTitle}>{achievement.title}</div>
+                              <div className={styles.achievementUnlocked}>Unlocked!</div>
+                            </div>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    <div className={styles.noAchievements}>
+                      <Award className={styles.emptyIcon} size={32} />
+                      <p>No achievements yet</p>
                     </div>
-                    <div className={styles.nextAchievementDetails}>
-                      <div className={styles.nextAchievementTitle}>{nextAchievement.title}</div>
-                      <div className={styles.nextAchievementProgress}>
-                        <div className={styles.progressBar}>
-                          <div 
-                            className={styles.progressFill}
-                            style={{ width: `${achievementProgress}%` }}
-                          />
+                  )}
+                </div>
+
+                {/* Next Achievement Progress */}
+                {nextAchievement && (
+                  <div className={styles.nextAchievement}>
+                    <div className={styles.nextAchievementHeader}>
+                      <Lock size={14} />
+                      <span>Next Achievement</span>
+                    </div>
+                    <div className={styles.nextAchievementContent}>
+                      <div 
+                        className={styles.nextAchievementIconLocked}
+                      >
+                        <nextAchievement.icon size={20} />
+                      </div>
+                      <div className={styles.nextAchievementDetails}>
+                        <div className={styles.nextAchievementTitle}>{nextAchievement.title}</div>
+                        <div className={styles.nextAchievementProgress}>
+                          <div className={styles.progressBar}>
+                            <div 
+                              className={styles.progressFill}
+                              style={{ width: `${achievementProgress}%` }}
+                            />
+                          </div>
+                          <span className={styles.progressText}>{Math.round(achievementProgress)}%</span>
                         </div>
-                        <span className={styles.progressText}>{Math.round(achievementProgress)}%</span>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </Layout>
