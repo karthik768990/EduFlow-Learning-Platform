@@ -234,22 +234,22 @@ function MainContent({ children, title }: { children: ReactNode; title: string }
   const { theme, toggleTheme } = useTheme();
   
   return (
-    <main className="flex-1 min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-8 py-4 bg-background border-b border-border sticky top-0 z-40">
-        <div className="flex items-center gap-4">
+    <main className="flex-1 min-h-screen flex flex-col overflow-x-hidden">
+      <header className="flex items-center justify-between px-4 sm:px-8 py-4 bg-background border-b border-border sticky top-0 z-40">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <SidebarToggleButton />
-          <h1 className="font-display text-2xl font-bold text-foreground">{title}</h1>
+          <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
         </div>
         <button 
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary border border-border text-muted-foreground hover:bg-sidebar hover:text-sidebar-foreground transition-all hover:rotate-[15deg]"
+          className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-secondary border border-border text-muted-foreground hover:bg-sidebar hover:text-sidebar-foreground transition-all hover:rotate-[15deg] shrink-0"
           onClick={toggleTheme}
           aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
-          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
         </button>
       </header>
       <motion.div 
-        className="flex-1 p-8 max-w-7xl mx-auto w-full"
+        className="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}

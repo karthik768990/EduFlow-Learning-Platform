@@ -346,15 +346,23 @@
   .userStatsCard {
     flex-direction: column;
     gap: var(--space-4);
+    padding: var(--space-4);
   }
   
   .userStatsGrid {
     flex-wrap: wrap;
     justify-content: center;
+    gap: var(--space-3);
+  }
+  
+  .userStat {
+    padding: var(--space-2) var(--space-3);
   }
   
   .leaderboardItem {
     grid-template-columns: 50px 1fr 60px;
+    gap: var(--space-2);
+    padding: var(--space-3);
   }
   
   .statsCell {
@@ -363,5 +371,44 @@
   
   .tabs {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tab {
+    white-space: nowrap;
+  }
+  
+  .rankBadge {
+    font-size: var(--text-lg);
+    padding: var(--space-1) var(--space-3);
+  }
+  
+  .score {
+    font-size: var(--text-lg);
+  }
+}
+
+@media (max-width: 480px) {
+  .filterRow {
+    justify-content: center;
+  }
+  
+  .periodFilter {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .leaderboardItem {
+    grid-template-columns: 40px 1fr 50px;
+  }
+  
+  .avatar,
+  .avatarPlaceholder {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .userName {
+    font-size: var(--text-sm);
   }
 }

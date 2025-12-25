@@ -373,3 +373,49 @@
     transform: rotate(360deg);
   }
 }
+
+/* Responsive */
+@media (max-width: 480px) {
+  .authContainer {
+    padding: var(--space-2);
+    align-items: flex-start;
+    padding-top: var(--space-8);
+  }
+  
+  .authCard {
+    border-radius: var(--radius-xl);
+  }
+  
+  .authHeader {
+    padding: var(--space-6) var(--space-4) var(--space-4);
+  }
+  
+  .authContent {
+    padding: 0 var(--space-4) var(--space-6);
+  }
+  
+  .authFooter {
+    padding: var(--space-3) var(--space-4);
+  }
+  
+  .logoIcon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .logoText {
+    font-size: var(--text-xl);
+  }
+  
+  .authTitle {
+    font-size: var(--text-lg);
+  }
+  
+  .roleOptions {
+    gap: var(--space-2);
+  }
+  
+  .roleOption {
+    padding: var(--space-3);
+  }
+}
