@@ -72,10 +72,13 @@ function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <SidebarHeader className="p-4 border-b border-white/10">
+      <SidebarHeader className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center text-primary-foreground shrink-0">
-            <BookOpen size={20} />
+          <div className={cn(
+            "bg-primary rounded-lg flex items-center justify-center text-primary-foreground shrink-0 transition-all",
+            isCollapsed ? "w-8 h-8" : "w-10 h-10"
+          )}>
+            <BookOpen size={isCollapsed ? 16 : 20} />
           </div>
           {!isCollapsed && (
             <span className="font-display text-xl font-bold text-sidebar-foreground">EduFlow</span>
@@ -120,9 +123,12 @@ function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-white/10">
+      <SidebarFooter className="p-4 border-t border-sidebar-border">
         <div className={cn("flex items-center gap-3 p-2 rounded-md", !isCollapsed && "mb-2")}>
-          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm shrink-0">
+          <div className={cn(
+            "rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold shrink-0 transition-all",
+            isCollapsed ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm"
+          )}>
             {initials}
           </div>
           {!isCollapsed && (
