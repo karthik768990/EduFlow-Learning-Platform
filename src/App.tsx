@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Auth from '@/pages/Auth';
 import Dashboard from '@/pages/Dashboard';
 import Assignments from '@/pages/Assignments';
+import StudyTimer from '@/pages/StudyTimer';
 import { Toaster } from '@/components/ui/toaster';
 import '@/styles/global.css';
 
@@ -22,6 +23,7 @@ function AppRoutes() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/assignments" element={<ProtectedRoute><Assignments /></ProtectedRoute>} />
+      <Route path="/study-timer" element={<ProtectedRoute><StudyTimer /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
