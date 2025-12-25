@@ -6,6 +6,7 @@ import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { playWorkCompleteSound, playBreakCompleteSound } from '@/lib/audio';
 import styles from '@/styles/pages/StudyTimer.module.css';
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'History', 'Programming', 'Art', 'Other'];
@@ -130,6 +131,9 @@ export default function StudyTimer() {
         .update({ end_time: new Date().toISOString(), is_active: false })
         .eq('id', currentSessionId);
       
+      // Play work complete sound
+      playWorkCompleteSound();
+      
       toast({ 
         title: 'Great work! 🎉', 
         description: 'Pomodoro complete! Take a 5 minute break.' 
@@ -142,7 +146,9 @@ export default function StudyTimer() {
       setIsBreak(true);
       setTimeLeft(BREAK_TIME);
     } else {
-      // Break complete
+      // Break complete - play break complete sound
+      playBreakCompleteSound();
+      
       toast({ 
         title: 'Break over!', 
         description: 'Ready for another focused session?' 
