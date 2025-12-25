@@ -34,7 +34,7 @@
 
 .timerRingBg {
   fill: none;
-  stroke: var(--color-gray-100);
+  stroke: var(--border-light);
   stroke-width: 8;
 }
 
@@ -53,9 +53,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: var(--bg-primary);
   border-radius: var(--radius-full);
   box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-light);
 }
 
 .timerTime {
@@ -159,11 +160,12 @@
 
 .controlButton.reset {
   background-color: var(--bg-secondary);
+  border: 1px solid var(--border-light);
   color: var(--text-secondary);
 }
 
 .controlButton.reset:hover {
-  background-color: var(--color-gray-200);
+  background-color: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
@@ -217,8 +219,8 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-lg);
-  background-color: var(--color-primary-100);
-  color: var(--color-primary);
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -246,7 +248,7 @@
   font-family: var(--font-display);
   font-size: var(--text-base);
   font-weight: var(--font-semibold);
-  color: var(--color-primary);
+  color: hsl(var(--primary));
 }
 
 /* Stats Grid */
@@ -335,7 +337,31 @@
   width: 48px;
   height: 48px;
   margin: 0 auto var(--space-4);
-  color: var(--color-gray-300);
+  color: var(--text-tertiary);
+}
+
+/* Dark mode adjustments */
+:global(.dark) .timerInner {
+  box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.2);
+}
+
+:global(.dark) .timerSection.isRunning {
+  animation: glowDark 2s ease-in-out infinite;
+}
+
+@keyframes glowDark {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.4);
+  }
+}
+
+:global(.dark) .statCard,
+:global(.dark) .timerSection,
+:global(.dark) .sessionsSection {
+  border: 1px solid var(--border-light);
 }
 
 @media (max-width: 768px) {
