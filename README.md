@@ -440,7 +440,7 @@ VALUES ('user-uuid-here', 'teacher');
 ### Edit Locally
 
 ```bash
-git clone 
+git clone "https://github.com/karthik768990/EduFlow-Learning-Platform"
 cd EDuFlow-Learning-Platform
 npm install
 npm run dev
