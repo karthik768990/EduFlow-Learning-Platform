@@ -67,13 +67,126 @@
   padding: 0 var(--space-8) var(--space-8);
 }
 
+/* Form styles */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.inputLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputIcon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-10);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  transition: all var(--transition-normal);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input.inputError {
+  border-color: var(--color-error);
+}
+
+.input.inputError:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.passwordToggle {
+  position: absolute;
+  right: var(--space-3);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.passwordToggle:hover {
+  color: var(--text-secondary);
+}
+
+.fieldError {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+}
+
+/* Primary button */
+.primaryButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-inverse);
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  margin-top: var(--space-2);
+}
+
+.primaryButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .googleButton {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   background-color: var(--bg-primary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
@@ -84,7 +197,7 @@
   transition: all var(--transition-normal);
 }
 
-.googleButton:hover {
+.googleButton:hover:not(:disabled) {
   background-color: var(--bg-secondary);
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
@@ -105,7 +218,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  margin: var(--space-6) 0;
+  margin: var(--space-5) 0;
 }
 
 .dividerLine {
@@ -118,6 +231,34 @@
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   text-transform: uppercase;
+}
+
+/* Toggle auth mode */
+.toggleAuth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.toggleText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.toggleButton {
+  background: none;
+  border: none;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-primary);
+  cursor: pointer;
+  padding: 0;
+}
+
+.toggleButton:hover {
+  text-decoration: underline;
 }
 
 .roleSelection {
@@ -203,6 +344,16 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--radius-md);
   color: var(--color-error);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+.successMessage {
+  padding: var(--space-3) var(--space-4);
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--color-success);
   font-size: var(--text-sm);
   margin-bottom: var(--space-4);
 }
