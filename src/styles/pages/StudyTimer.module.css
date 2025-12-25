@@ -382,6 +382,7 @@
 @media (max-width: 768px) {
   .statsGrid {
     grid-template-columns: 1fr;
+    gap: var(--space-3);
   }
   
   .chartsGrid {
@@ -395,5 +396,53 @@
   
   .timerTime {
     font-size: var(--text-3xl);
+  }
+  
+  .subjectGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-2);
+  }
+  
+  .timerControls {
+    gap: var(--space-3);
+  }
+  
+  .controlButton {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .controlButton.start,
+  .controlButton.stop {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .sessionItem {
+    padding: var(--space-3);
+  }
+  
+  .chartContainer {
+    height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .timerDisplay {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .timerTime {
+    font-size: var(--text-2xl);
+  }
+  
+  .subjectGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .subjectChip {
+    padding: var(--space-2);
+    font-size: var(--text-xs);
   }
 }

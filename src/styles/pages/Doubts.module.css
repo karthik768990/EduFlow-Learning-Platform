@@ -410,11 +410,16 @@
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .header {
     flex-direction: column;
     align-items: stretch;
-    gap: var(--space-4);
+    gap: var(--space-3);
+  }
+  
+  .askButton {
+    width: 100%;
+    justify-content: center;
   }
   
   .doubtHeader {
@@ -424,5 +429,35 @@
   
   .doubtStatus {
     margin-top: var(--space-2);
+  }
+  
+  .doubtCard {
+    padding: var(--space-4);
+  }
+  
+  .formActions {
+    flex-direction: column;
+  }
+  
+  .cancelButton,
+  .submitButton {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .doubtMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .replyItem {
+    padding: var(--space-3);
+  }
+  
+  .replyButton {
+    width: 100%;
   }
 }
