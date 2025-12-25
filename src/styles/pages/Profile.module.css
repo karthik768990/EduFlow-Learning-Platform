@@ -44,6 +44,11 @@
   border-bottom: 1px solid var(--border);
 }
 
+.avatarContainer {
+  position: relative;
+  display: inline-block;
+}
+
 .avatarWrapper {
   position: relative;
   width: 120px;
@@ -52,6 +57,33 @@
   cursor: pointer;
   overflow: hidden;
   transition: transform 0.2s ease;
+}
+
+.achievementBadge {
+  position: absolute;
+  top: -8px;
+  right: -60px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
+  color: hsl(var(--primary-foreground));
+  padding: 0.35rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+  white-space: nowrap;
+}
+
+.achievementIcon {
+  font-size: 0.9rem;
+}
+
+.achievementLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .avatarWrapper:hover {

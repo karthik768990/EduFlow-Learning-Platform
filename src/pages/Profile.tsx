@@ -1,11 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Save, User, Mail, Loader2 } from 'lucide-react';
+import { Camera, Save, User, Mail, Loader2, Trophy } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import styles from '@/styles/pages/Profile.module.css';
+
+// Achievement definitions with priority (higher = better)
+const ACHIEVEMENTS: Record<string, { label: string; icon: string; priority: number }> = {
+  first_session: { label: 'First Steps', icon: '🎯', priority: 1 },
+  hour_milestone: { label: 'Hour Hero', icon: '⏰', priority: 2 },
+  streak_3: { label: '3-Day Streak', icon: '🔥', priority: 3 },
+  streak_7: { label: 'Week Warrior', icon: '⚡', priority: 4 },
+  early_bird: { label: 'Early Bird', icon: '🌅', priority: 5 },
+  night_owl: { label: 'Night Owl', icon: '🦉', priority: 6 },
+  top_10: { label: 'Top 10', icon: '🏆', priority: 7 },
+  assignment_master: { label: 'Assignment Master', icon: '📚', priority: 8 },
+  study_champion: { label: 'Study Champion', icon: '👑', priority: 9 },
+};
 
 export default function Profile() {
   const { user } = useAuth();
@@ -17,10 +30,12 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [highestAchievement, setHighestAchievement] = useState<{ label: string; icon: string } | null>(null);
 
   useEffect(() => {
     if (user) {
       fetchProfile();
+      fetchHighestAchievement();
     }
   }, [user]);
 
@@ -37,6 +52,27 @@ export default function Profile() {
       setAvatarUrl(data.avatar_url);
     }
     setLoading(false);
+  };
+
+  const fetchHighestAchievement = async () => {
+    const { data } = await supabase
+      .from('user_achievements')
+      .select('achievement_key')
+      .eq('user_id', user!.id);
+    
+    if (data && data.length > 0) {
+      // Find the highest priority achievement
+      let highest: { label: string; icon: string; priority: number } | null = null;
+      data.forEach((item) => {
+        const achievement = ACHIEVEMENTS[item.achievement_key];
+        if (achievement && (!highest || achievement.priority > highest.priority)) {
+          highest = achievement;
+        }
+      });
+      if (highest) {
+        setHighestAchievement({ label: highest.label, icon: highest.icon });
+      }
+    }
   };
 
   const handleAvatarClick = () => {
@@ -146,24 +182,37 @@ export default function Profile() {
         >
           {/* Avatar Section */}
           <div className={styles.avatarSection}>
-            <div 
-              className={styles.avatarWrapper}
-              onClick={handleAvatarClick}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className={styles.avatar} />
-              ) : (
-                <div className={styles.avatarPlaceholder}>
-                  {getInitials(fullName)}
-                </div>
-              )}
-              <div className={styles.avatarOverlay}>
-                {uploading ? (
-                  <Loader2 className={styles.spinIcon} size={24} />
+            <div className={styles.avatarContainer}>
+              <div 
+                className={styles.avatarWrapper}
+                onClick={handleAvatarClick}
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" className={styles.avatar} />
                 ) : (
-                  <Camera size={24} />
+                  <div className={styles.avatarPlaceholder}>
+                    {getInitials(fullName)}
+                  </div>
                 )}
+                <div className={styles.avatarOverlay}>
+                  {uploading ? (
+                    <Loader2 className={styles.spinIcon} size={24} />
+                  ) : (
+                    <Camera size={24} />
+                  )}
+                </div>
               </div>
+              {highestAchievement && (
+                <motion.div 
+                  className={styles.achievementBadge}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', delay: 0.2 }}
+                >
+                  <span className={styles.achievementIcon}>{highestAchievement.icon}</span>
+                  <span className={styles.achievementLabel}>{highestAchievement.label}</span>
+                </motion.div>
+              )}
             </div>
             <input
               ref={fileInputRef}
