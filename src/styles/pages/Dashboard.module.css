@@ -58,6 +58,12 @@
   gap: var(--space-6);
 }
 
+.statCardLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
 .statCard {
   background-color: var(--bg-primary);
   border-radius: var(--radius-lg);
@@ -67,6 +73,8 @@
   align-items: flex-start;
   gap: var(--space-4);
   transition: all var(--transition-normal);
+  cursor: pointer;
+  height: 100%;
 }
 
 .statCard:hover {

@@ -284,18 +284,18 @@ export default function Dashboard() {
 
   // Teacher stats config
   const teacherStatsConfig = [
-    { icon: FileText, value: teacherStats.totalAssignments, label: 'My Assignments', color: 'primary' },
-    { icon: MessageCircle, value: teacherStats.pendingDoubts, label: 'Pending Doubts', color: 'accent' },
-    { icon: CheckCircle, value: teacherStats.todaySubmissions, label: "Today's Submissions", color: 'success' },
-    { icon: Users, value: teacherStats.totalStudents, label: 'Active Students', color: 'secondary' },
+    { icon: FileText, value: teacherStats.totalAssignments, label: 'My Assignments', color: 'primary', link: '/assignments' },
+    { icon: MessageCircle, value: teacherStats.pendingDoubts, label: 'Pending Doubts', color: 'accent', link: '/doubts' },
+    { icon: CheckCircle, value: teacherStats.todaySubmissions, label: "Today's Submissions", color: 'success', link: '/leaderboard' },
+    { icon: Users, value: teacherStats.totalStudents, label: 'Active Students', color: 'secondary', link: '/leaderboard' },
   ];
 
   // Student stats config
   const studentStatsConfig = [
-    { icon: FileText, value: stats.assignments, label: 'Total Assignments', color: 'primary' },
-    { icon: CheckCircle, value: stats.completed, label: 'Completed', color: 'success' },
-    { icon: Clock, value: `${stats.studyTime}m`, label: 'Study Time', color: 'secondary' },
-    { icon: Trophy, value: `#${stats.rank}`, label: 'Your Rank', color: 'accent' },
+    { icon: FileText, value: stats.assignments, label: 'Total Assignments', color: 'primary', link: '/assignments' },
+    { icon: CheckCircle, value: stats.completed, label: 'Completed', color: 'success', link: '/assignments' },
+    { icon: Clock, value: `${stats.studyTime}m`, label: 'Study Time', color: 'secondary', link: '/study-timer' },
+    { icon: Trophy, value: `#${stats.rank}`, label: 'Your Rank', color: 'accent', link: '/leaderboard' },
   ];
 
   const statsConfig = role === 'teacher' ? teacherStatsConfig : studentStatsConfig;
@@ -337,13 +337,15 @@ export default function Dashboard() {
 
         <div className={styles.statsGrid}>
           {statsConfig.map((stat, i) => (
-            <motion.div key={i} className={styles.statCard} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <div className={`${styles.statIcon} ${styles[stat.color]}`}><stat.icon size={24} /></div>
-              <div className={styles.statContent}>
-                <div className={styles.statValue}>{stat.value}</div>
-                <div className={styles.statLabel}>{stat.label}</div>
-              </div>
-            </motion.div>
+            <Link to={stat.link} key={i} className={styles.statCardLink}>
+              <motion.div className={styles.statCard} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+                <div className={`${styles.statIcon} ${styles[stat.color]}`}><stat.icon size={24} /></div>
+                <div className={styles.statContent}>
+                  <div className={styles.statValue}>{stat.value}</div>
+                  <div className={styles.statLabel}>{stat.label}</div>
+                </div>
+              </motion.div>
+            </Link>
           ))}
         </div>
 
