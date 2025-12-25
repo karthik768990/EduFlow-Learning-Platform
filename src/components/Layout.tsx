@@ -1,20 +1,51 @@
 import { ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award, Sun, Moon } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award, Sun, Moon, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import styles from '@/styles/components/Sidebar.module.css';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  useSidebar,
+} from '@/components/ui/sidebar';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface LayoutProps {
   children: ReactNode;
   title: string;
 }
 
-export default function Layout({ children, title }: LayoutProps) {
+function SidebarToggleButton() {
+  const { state, toggleSidebar } = useSidebar();
+  const isCollapsed = state === 'collapsed';
+  
+  return (
+    <button 
+      onClick={toggleSidebar}
+      className="flex items-center justify-center w-8 h-8 rounded-md hover:bg-sidebar-accent transition-colors"
+      aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+    >
+      {isCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+    </button>
+  );
+}
+
+function AppSidebar() {
   const { user, role, signOut } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { state } = useSidebar();
   const navigate = useNavigate();
+  const isCollapsed = state === 'collapsed';
 
   const handleSignOut = async () => {
     await signOut();
@@ -40,74 +71,158 @@ export default function Layout({ children, title }: LayoutProps) {
   const initials = user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('') || user?.email?.[0]?.toUpperCase() || 'U';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <aside className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <div className={styles.logo}>
-            <div className={styles.logoIcon}><BookOpen size={20} /></div>
-            <span className={styles.logoText}>EduFlow</span>
+    <Sidebar collapsible="icon" className="border-r-0">
+      <SidebarHeader className="p-4 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center text-primary-foreground shrink-0">
+            <BookOpen size={20} />
           </div>
+          {!isCollapsed && (
+            <span className="font-display text-xl font-bold text-sidebar-foreground">EduFlow</span>
+          )}
         </div>
+      </SidebarHeader>
 
-        <nav className={styles.sidebarNav}>
-          <div className={styles.navSection}>
-            <div className={styles.navSectionTitle}>Menu</div>
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-              >
-                <item.icon className={styles.navIcon} />
-                <span>{item.label}</span>
-              </NavLink>
-            ))}
+      <SidebarContent className="px-2">
+        <SidebarGroup>
+          <SidebarGroupLabel className={cn("text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wide", isCollapsed && "sr-only")}>
+            Menu
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SidebarMenuButton asChild>
+                        <RouterNavLink
+                          to={item.to}
+                          className={({ isActive }) => cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                            isActive && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+                          )}
+                        >
+                          <item.icon className="w-5 h-5 shrink-0" />
+                          {!isCollapsed && <span>{item.label}</span>}
+                        </RouterNavLink>
+                      </SidebarMenuButton>
+                    </TooltipTrigger>
+                    {isCollapsed && (
+                      <TooltipContent side="right">
+                        {item.label}
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="p-4 border-t border-white/10">
+        <div className={cn("flex items-center gap-3 p-2 rounded-md", !isCollapsed && "mb-2")}>
+          <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm shrink-0">
+            {initials}
           </div>
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          <div className={styles.userInfo}>
-            <div className={styles.userAvatar}>{initials}</div>
-            <div className={styles.userDetails}>
-              <div className={styles.userName}>{user?.user_metadata?.full_name || user?.email}</div>
-              <div className={styles.userRole}>{role}</div>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-sidebar-foreground truncate">
+                {user?.user_metadata?.full_name || user?.email}
+              </div>
+              <div className="text-xs text-sidebar-foreground/50 capitalize">{role}</div>
             </div>
-          </div>
-          <NavLink
-            to="/profile"
-            className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-            style={{ marginTop: '8px' }}
-          >
-            <Settings className={styles.navIcon} />
-            <span>Profile Settings</span>
-          </NavLink>
-          <button className={styles.navItem} onClick={handleSignOut} style={{ marginTop: '4px', width: '100%' }}>
-            <LogOut className={styles.navIcon} />
-            <span>Sign Out</span>
-          </button>
+          )}
         </div>
-      </aside>
+        
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarMenuButton asChild>
+                  <RouterNavLink
+                    to="/profile"
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                      isActive && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
+                    )}
+                  >
+                    <Settings className="w-5 h-5 shrink-0" />
+                    {!isCollapsed && <span>Profile Settings</span>}
+                  </RouterNavLink>
+                </SidebarMenuButton>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right">
+                  Profile Settings
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </SidebarMenuItem>
+          
+          <SidebarMenuItem>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarMenuButton asChild>
+                  <button 
+                    onClick={handleSignOut}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground w-full"
+                  >
+                    <LogOut className="w-5 h-5 shrink-0" />
+                    {!isCollapsed && <span>Sign Out</span>}
+                  </button>
+                </SidebarMenuButton>
+              </TooltipTrigger>
+              {isCollapsed && (
+                <TooltipContent side="right">
+                  Sign Out
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
 
-      <main className={styles.mainContent}>
-        <header className={styles.header}>
-          <h1 className={styles.pageTitle}>{title}</h1>
-          <button 
-            className={styles.themeToggle}
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-          </button>
-        </header>
-        <motion.div 
-          className={styles.contentWrapper}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+function MainContent({ children, title }: { children: ReactNode; title: string }) {
+  const { theme, toggleTheme } = useTheme();
+  
+  return (
+    <main className="flex-1 min-h-screen flex flex-col">
+      <header className="flex items-center justify-between px-8 py-4 bg-background border-b border-border sticky top-0 z-40">
+        <div className="flex items-center gap-4">
+          <SidebarToggleButton />
+          <h1 className="font-display text-2xl font-bold text-foreground">{title}</h1>
+        </div>
+        <button 
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-secondary border border-border text-muted-foreground hover:bg-sidebar hover:text-sidebar-foreground transition-all hover:rotate-[15deg]"
+          onClick={toggleTheme}
+          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
         >
-          {children}
-        </motion.div>
-      </main>
-    </div>
+          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+        </button>
+      </header>
+      <motion.div 
+        className="flex-1 p-8 max-w-7xl mx-auto w-full"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        {children}
+      </motion.div>
+    </main>
+  );
+}
+
+export default function Layout({ children, title }: LayoutProps) {
+  return (
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <MainContent title={title}>{children}</MainContent>
+      </div>
+    </SidebarProvider>
   );
 }
