@@ -54,6 +54,46 @@ export default function Dashboard() {
     }
   }, [user, role]);
 
+  // Real-time updates for teacher dashboard
+  useEffect(() => {
+    if (!user || role !== 'teacher') return;
+
+    const channel = supabase
+      .channel('teacher-dashboard-updates')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'submissions' },
+        () => {
+          console.log('New submission received');
+          fetchTeacherStats();
+          fetchRecentActivity();
+          fetchLeaderboard();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'doubts' },
+        () => {
+          console.log('New doubt received');
+          fetchTeacherStats();
+          fetchRecentActivity();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'doubt_replies' },
+        () => {
+          console.log('New doubt reply received');
+          fetchTeacherStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, role]);
+
   const fetchProfile = async () => {
     const { data } = await supabase
       .from('profiles')
