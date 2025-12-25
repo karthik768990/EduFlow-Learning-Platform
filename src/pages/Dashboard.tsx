@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [earnedAchievements, setEarnedAchievements] = useState<string[]>([]);
   const [nextAchievement, setNextAchievement] = useState<any>(null);
   const [achievementProgress, setAchievementProgress] = useState(0);
+  const [profileName, setProfileName] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -33,8 +34,19 @@ export default function Dashboard() {
       fetchWeeklyData();
       fetchLeaderboard();
       fetchAchievements();
+      fetchProfile();
     }
   }, [user]);
+
+  const fetchProfile = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user!.id)
+      .maybeSingle();
+    
+    setProfileName(data?.full_name || null);
+  };
 
   const fetchStats = async () => {
     const [assignmentsRes, submissionsRes, sessionsRes] = await Promise.all([
@@ -156,7 +168,7 @@ export default function Dashboard() {
       <div className={styles.dashboard}>
         <motion.div className={styles.welcomeSection} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className={styles.welcomeContent}>
-            <h1>Welcome back, {user?.user_metadata?.full_name?.split(' ')[0] || (role === 'teacher' ? 'Teacher' : 'Student')}!</h1>
+            <h1>Welcome back, {profileName?.split(' ')[0] || user?.user_metadata?.full_name?.split(' ')[0] || (role === 'teacher' ? 'Teacher' : 'Student')}!</h1>
             <p>Track your progress and stay on top of your learning goals.</p>
           </div>
           <div className={styles.quickStats}>
