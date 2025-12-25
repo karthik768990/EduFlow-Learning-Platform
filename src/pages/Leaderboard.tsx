@@ -89,7 +89,7 @@ export default function Leaderboard() {
     // Fetch profiles for these users
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, avatar_url')
+      .select('id, full_name, avatar_url, email')
       .in('id', userIds);
     
     // Build leaderboard entries
@@ -98,9 +98,18 @@ export default function Leaderboard() {
       const assignments = submissionCounts[userId] || 0;
       const minutes = Math.round(studyMinutes[userId] || 0);
       
+      // Get display name: full_name, or email username, or fallback
+      let displayName = 'Student';
+      if (profile?.full_name) {
+        displayName = profile.full_name;
+      } else if (profile?.email) {
+        // Use the part before @ as display name
+        displayName = profile.email.split('@')[0];
+      }
+      
       return {
         id: userId,
-        full_name: profile?.full_name || 'Student',
+        full_name: displayName,
         avatar_url: profile?.avatar_url || null,
         assignments_completed: assignments,
         study_minutes: minutes,
