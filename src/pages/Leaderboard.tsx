@@ -7,6 +7,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import styles from '@/styles/pages/Leaderboard.module.css';
 
+// Achievement definitions with priority (higher = better)
+const ACHIEVEMENTS: Record<string, { label: string; icon: string; priority: number }> = {
+  first_session: { label: 'First Steps', icon: '🎯', priority: 1 },
+  hour_milestone: { label: 'Hour Hero', icon: '⏰', priority: 2 },
+  streak_3: { label: '3-Day Streak', icon: '🔥', priority: 3 },
+  streak_7: { label: 'Week Warrior', icon: '⚡', priority: 4 },
+  early_bird: { label: 'Early Bird', icon: '🌅', priority: 5 },
+  night_owl: { label: 'Night Owl', icon: '🦉', priority: 6 },
+  top_10: { label: 'Top 10', icon: '🏆', priority: 7 },
+  assignment_master: { label: 'Assignment Master', icon: '📚', priority: 8 },
+  study_champion: { label: 'Study Champion', icon: '👑', priority: 9 },
+};
+
 interface LeaderboardEntry {
   id: string;
   full_name: string;
@@ -14,6 +27,7 @@ interface LeaderboardEntry {
   assignments_completed: number;
   study_minutes: number;
   total_score: number;
+  highest_achievement: { label: string; icon: string } | null;
 }
 
 type TimePeriod = 'all' | 'week' | 'month';
@@ -92,6 +106,26 @@ export default function Leaderboard() {
       .select('id, full_name, avatar_url, email')
       .in('id', userIds);
     
+    // Fetch achievements for all users
+    const { data: allAchievements } = await supabase
+      .from('user_achievements')
+      .select('user_id, achievement_key')
+      .in('user_id', userIds);
+    
+    // Group achievements by user and find highest
+    const userHighestAchievements: Record<string, { label: string; icon: string } | null> = {};
+    userIds.forEach(userId => {
+      const userAchievements = (allAchievements || []).filter(a => a.user_id === userId);
+      let highest: { label: string; icon: string; priority: number } | null = null;
+      userAchievements.forEach(item => {
+        const achievement = ACHIEVEMENTS[item.achievement_key];
+        if (achievement && (!highest || achievement.priority > highest.priority)) {
+          highest = achievement;
+        }
+      });
+      userHighestAchievements[userId] = highest ? { label: highest.label, icon: highest.icon } : null;
+    });
+    
     // Build leaderboard entries
     const entries: LeaderboardEntry[] = userIds.map(userId => {
       const profile = profiles?.find(p => p.id === userId);
@@ -113,7 +147,8 @@ export default function Leaderboard() {
         avatar_url: profile?.avatar_url || null,
         assignments_completed: assignments,
         study_minutes: minutes,
-        total_score: assignments * 10 + Math.floor(minutes / 5) // 10 pts per assignment, 1 pt per 5 min
+        total_score: assignments * 10 + Math.floor(minutes / 5), // 10 pts per assignment, 1 pt per 5 min
+        highest_achievement: userHighestAchievements[userId]
       };
     });
     
@@ -282,6 +317,11 @@ export default function Leaderboard() {
                     <div className={styles.userName}>
                       {entry.full_name}
                       {entry.id === user?.id && <span className={styles.youBadge}>You</span>}
+                      {entry.highest_achievement && (
+                        <span className={styles.achievementTag} title={entry.highest_achievement.label}>
+                          {entry.highest_achievement.icon} {entry.highest_achievement.label}
+                        </span>
+                      )}
                     </div>
                   </div>
                   
