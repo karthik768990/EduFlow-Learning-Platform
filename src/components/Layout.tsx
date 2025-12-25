@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from '@/styles/components/Sidebar.module.css';
 
@@ -22,6 +22,7 @@ export default function Layout({ children, title }: LayoutProps) {
   const studentNav = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/assignments', icon: FileText, label: 'Assignments' },
+    { to: '/doubts', icon: HelpCircle, label: 'My Questions' },
     { to: '/study-timer', icon: Clock, label: 'Study Timer' },
     { to: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
   ];
