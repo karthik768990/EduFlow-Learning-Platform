@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from '@/styles/components/Sidebar.module.css';
 
@@ -70,7 +70,15 @@ export default function Layout({ children, title }: LayoutProps) {
               <div className={styles.userRole}>{role}</div>
             </div>
           </div>
-          <button className={styles.navItem} onClick={handleSignOut} style={{ marginTop: '8px', width: '100%' }}>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+            style={{ marginTop: '8px' }}
+          >
+            <Settings className={styles.navIcon} />
+            <span>Profile Settings</span>
+          </NavLink>
+          <button className={styles.navItem} onClick={handleSignOut} style={{ marginTop: '4px', width: '100%' }}>
             <LogOut className={styles.navIcon} />
             <span>Sign Out</span>
           </button>
