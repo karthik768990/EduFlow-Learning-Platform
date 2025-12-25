@@ -1,0 +1,128 @@
+/* Input Component Styles */
+.inputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.required {
+  color: var(--color-error);
+  margin-left: var(--space-1);
+}
+
+.inputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input:hover:not(:disabled) {
+  border-color: var(--color-gray-400);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.input:disabled {
+  background-color: var(--bg-secondary);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.input.error {
+  border-color: var(--color-error);
+}
+
+.input.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* With Icon */
+.hasLeftIcon {
+  padding-left: var(--space-10);
+}
+
+.hasRightIcon {
+  padding-right: var(--space-10);
+}
+
+.leftIcon,
+.rightIcon {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.leftIcon {
+  left: var(--space-3);
+}
+
+.rightIcon {
+  right: var(--space-3);
+}
+
+/* Helper Text */
+.helperText {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.errorText {
+  font-size: var(--text-xs);
+  color: var(--color-error);
+}
+
+/* Textarea */
+.textarea {
+  min-height: 100px;
+  resize: vertical;
+  line-height: var(--leading-relaxed);
+}
+
+/* Select */
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  padding-right: var(--space-10);
+  cursor: pointer;
+}
+
+/* Sizes */
+.small .input {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+}
+
+.large .input {
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-base);
+}
