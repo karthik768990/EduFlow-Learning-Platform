@@ -5,10 +5,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+        - VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY}
+        - VITE_SUPABASE_PROJECT_ID=${VITE_SUPABASE_PROJECT_ID}
+        - VITE_APP_NAME=${VITE_APP_NAME:-EduFlow}
+        - VITE_APP_VERSION=${VITE_APP_VERSION:-1.0.0}
+        - VITE_APP_ENV=${VITE_APP_ENV:-production}
     ports:
       - "3000:80"
-    environment:
-      - NODE_ENV=production
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
