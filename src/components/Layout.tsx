@@ -123,8 +123,11 @@ function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <div className={cn("flex items-center gap-3 p-2 rounded-md", !isCollapsed && "mb-2")}>
+      <SidebarFooter className={cn("border-t border-sidebar-border", isCollapsed ? "p-2" : "p-4")}>
+        <div className={cn(
+          "flex items-center rounded-md",
+          isCollapsed ? "justify-center p-1" : "gap-3 p-2 mb-2"
+        )}>
           <div className={cn(
             "rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold shrink-0 transition-all",
             isCollapsed ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm"
