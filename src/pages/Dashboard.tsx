@@ -156,7 +156,7 @@ export default function Dashboard() {
       <div className={styles.dashboard}>
         <motion.div className={styles.welcomeSection} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <div className={styles.welcomeContent}>
-            <h1>Welcome back, {user?.user_metadata?.full_name?.split(' ')[0] || 'Student'}!</h1>
+            <h1>Welcome back, {user?.user_metadata?.full_name?.split(' ')[0] || (role === 'teacher' ? 'Teacher' : 'Student')}!</h1>
             <p>Track your progress and stay on top of your learning goals.</p>
           </div>
           <div className={styles.quickStats}>
