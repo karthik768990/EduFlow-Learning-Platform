@@ -1,9 +1,10 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award, Sun, Moon, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award, Sun, Moon, PanelLeftClose, PanelLeft, Timer } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTimer } from '@/contexts/TimerContext';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Sidebar,
@@ -232,6 +233,7 @@ function AppSidebar() {
 
 function MainContent({ children, title }: { children: ReactNode; title: string }) {
   const { theme, toggleTheme } = useTheme();
+  const { isRunning, timeLeft, isBreak, formatTime } = useTimer();
   
   return (
     <main className="flex-1 min-h-screen flex flex-col overflow-x-hidden">
@@ -240,13 +242,32 @@ function MainContent({ children, title }: { children: ReactNode; title: string }
           <SidebarToggleButton />
           <h1 className="font-display text-lg sm:text-2xl font-bold text-foreground truncate">{title}</h1>
         </div>
-        <button 
-          className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-secondary border border-border text-muted-foreground hover:bg-sidebar hover:text-sidebar-foreground transition-all hover:rotate-[15deg] shrink-0"
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {isRunning && (
+            <RouterNavLink
+              to="/study-timer"
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                isBreak 
+                  ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20" 
+                  : "bg-primary/10 text-primary border border-primary/20"
+              )}
+            >
+              <Timer size={16} className="animate-pulse" />
+              <span className="font-mono">{formatTime(timeLeft)}</span>
+              <span className="hidden sm:inline text-xs opacity-70">
+                {isBreak ? 'Break' : 'Focus'}
+              </span>
+            </RouterNavLink>
+          )}
+          <button 
+            className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-secondary border border-border text-muted-foreground hover:bg-sidebar hover:text-sidebar-foreground transition-all hover:rotate-[15deg] shrink-0"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
+        </div>
       </header>
       <motion.div 
         className="flex-1 p-4 sm:p-8 max-w-7xl mx-auto w-full"
