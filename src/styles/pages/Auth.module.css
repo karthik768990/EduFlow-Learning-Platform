@@ -316,6 +316,69 @@
   color: hsl(142, 71%, 45%);
 }
 
+/* Remember Me Checkbox */
+.rememberRow {
+  display: flex;
+  align-items: center;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.checkboxCustom {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.checkboxCustom::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: var(--color-primary);
+  border-radius: 2px;
+  opacity: 0;
+  transform: scale(0);
+  transition: all var(--transition-normal);
+}
+
+.checkbox:checked + .checkboxCustom {
+  border-color: var(--color-primary);
+}
+
+.checkbox:checked + .checkboxCustom::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkbox:focus + .checkboxCustom {
+  box-shadow: 0 0 0 3px var(--color-primary-50);
+}
+
+.checkboxText {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
 /* Primary button */
 .primaryButton {
   width: 100%;
