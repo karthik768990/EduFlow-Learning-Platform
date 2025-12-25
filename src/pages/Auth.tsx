@@ -9,6 +9,19 @@ import styles from '@/styles/pages/Auth.module.css';
 const emailSchema = z.string().trim().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
+const getPasswordStrength = (password: string): { level: 'weak' | 'medium' | 'strong'; score: number } => {
+  let score = 0;
+  if (password.length >= 6) score++;
+  if (password.length >= 10) score++;
+  if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
+  if (/[^a-zA-Z0-9]/.test(password)) score++;
+  
+  if (score <= 2) return { level: 'weak', score: Math.min(score, 1) };
+  if (score <= 3) return { level: 'medium', score: 2 };
+  return { level: 'strong', score: 3 };
+};
+
 const formVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
@@ -547,6 +560,25 @@ export default function Auth() {
                       </button>
                     </div>
                     {fieldErrors.password && <span className={styles.fieldError}>{fieldErrors.password}</span>}
+                    {authMode === 'signup' && password.length > 0 && (
+                      <div className={styles.strengthIndicator}>
+                        <div className={styles.strengthBars}>
+                          {[1, 2, 3].map((bar) => (
+                            <div 
+                              key={bar} 
+                              className={`${styles.strengthBar} ${
+                                getPasswordStrength(password).score >= bar 
+                                  ? styles[getPasswordStrength(password).level] 
+                                  : ''
+                              }`} 
+                            />
+                          ))}
+                        </div>
+                        <span className={`${styles.strengthLabel} ${styles[getPasswordStrength(password).level]}`}>
+                          {getPasswordStrength(password).level.charAt(0).toUpperCase() + getPasswordStrength(password).level.slice(1)}
+                        </span>
+                      </div>
+                    )}
                   </motion.div>
                   
                   <motion.button 
@@ -659,6 +691,25 @@ export default function Auth() {
                       </button>
                     </div>
                     {fieldErrors.password && <span className={styles.fieldError}>{fieldErrors.password}</span>}
+                    {password.length > 0 && (
+                      <div className={styles.strengthIndicator}>
+                        <div className={styles.strengthBars}>
+                          {[1, 2, 3].map((bar) => (
+                            <div 
+                              key={bar} 
+                              className={`${styles.strengthBar} ${
+                                getPasswordStrength(password).score >= bar 
+                                  ? styles[getPasswordStrength(password).level] 
+                                  : ''
+                              }`} 
+                            />
+                          ))}
+                        </div>
+                        <span className={`${styles.strengthLabel} ${styles[getPasswordStrength(password).level]}`}>
+                          {getPasswordStrength(password).level.charAt(0).toUpperCase() + getPasswordStrength(password).level.slice(1)}
+                        </span>
+                      </div>
+                    )}
                   </motion.div>
                   
                   <motion.div 

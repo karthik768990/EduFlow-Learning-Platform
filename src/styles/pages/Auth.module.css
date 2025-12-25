@@ -263,6 +263,59 @@
   color: var(--color-error);
 }
 
+/* Password Strength Indicator */
+.strengthIndicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.strengthBars {
+  display: flex;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.strengthBar {
+  height: 4px;
+  flex: 1;
+  background: var(--border-light);
+  border-radius: var(--radius-full);
+  transition: background-color var(--transition-normal);
+}
+
+.strengthBar.weak {
+  background: hsl(0, 72%, 51%);
+}
+
+.strengthBar.medium {
+  background: hsl(45, 93%, 47%);
+}
+
+.strengthBar.strong {
+  background: hsl(142, 71%, 45%);
+}
+
+.strengthLabel {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  min-width: 50px;
+  text-align: right;
+}
+
+.strengthLabel.weak {
+  color: hsl(0, 72%, 51%);
+}
+
+.strengthLabel.medium {
+  color: hsl(45, 93%, 47%);
+}
+
+.strengthLabel.strong {
+  color: hsl(142, 71%, 45%);
+}
+
 /* Primary button */
 .primaryButton {
   width: 100%;
