@@ -1,12 +1,24 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, GraduationCap, Users, Mail, Lock, Eye, EyeOff, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
 import styles from '@/styles/pages/Auth.module.css';
 
 const emailSchema = z.string().trim().email('Please enter a valid email address');
+
+const formVariants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -20 }
+};
+
+const contentVariants = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -10 }
+};
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 export default function Auth() {
@@ -269,77 +281,122 @@ export default function Auth() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          <div className={styles.formHeader}>
-            <h2 className={styles.formTitle}>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
-            <p className={styles.formSubtitle}>
-              {isSignUp ? 'Sign up to start your learning journey' : 'Sign in to continue learning'}
-            </p>
-          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={isSignUp ? 'signup-header' : 'signin-header'}
+              variants={contentVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+              className={styles.formHeader}
+            >
+              <h2 className={styles.formTitle}>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
+              <p className={styles.formSubtitle}>
+                {isSignUp ? 'Sign up to start your learning journey' : 'Sign in to continue learning'}
+              </p>
+            </motion.div>
+          </AnimatePresence>
           
           <div className={styles.formContent}>
-            {error && (
-              <div className={error.includes('created') ? styles.successMessage : styles.errorMessage}>
-                {error}
-              </div>
-            )}
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div 
+                  key="error-message"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={error.includes('created') ? styles.successMessage : styles.errorMessage}
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
             
-            <form onSubmit={handleEmailAuth} className={styles.form}>
-              <div className={styles.inputGroup}>
-                <label htmlFor="email" className={styles.inputLabel}>Email</label>
-                <div className={styles.inputWrapper}>
-                  <Mail className={styles.inputIcon} size={18} />
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
-                    }}
-                    placeholder="you@example.com"
-                    className={`${styles.input} ${fieldErrors.email ? styles.inputError : ''}`}
-                    disabled={isLoading}
-                  />
-                </div>
-                {fieldErrors.email && <span className={styles.fieldError}>{fieldErrors.email}</span>}
-              </div>
-              
-              <div className={styles.inputGroup}>
-                <label htmlFor="password" className={styles.inputLabel}>Password</label>
-                <div className={styles.inputWrapper}>
-                  <Lock className={styles.inputIcon} size={18} />
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
-                    }}
-                    placeholder="••••••••"
-                    className={`${styles.input} ${fieldErrors.password ? styles.inputError : ''}`}
-                    disabled={isLoading}
-                  />
-                  <button
-                    type="button"
-                    className={styles.passwordToggle}
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                {fieldErrors.password && <span className={styles.fieldError}>{fieldErrors.password}</span>}
-              </div>
-              
-              <button 
-                type="submit"
-                className={styles.primaryButton} 
-                disabled={isLoading}
+            <AnimatePresence mode="wait">
+              <motion.form 
+                key={isSignUp ? 'signup-form' : 'signin-form'}
+                variants={formVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                onSubmit={handleEmailAuth} 
+                className={styles.form}
               >
-                {isLoading ? <div className={styles.spinner} /> : (isSignUp ? 'Sign Up' : 'Sign In')}
-              </button>
-            </form>
+                <motion.div 
+                  className={styles.inputGroup}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                >
+                  <label htmlFor="email" className={styles.inputLabel}>Email</label>
+                  <div className={styles.inputWrapper}>
+                    <Mail className={styles.inputIcon} size={18} />
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: undefined }));
+                      }}
+                      placeholder="you@example.com"
+                      className={`${styles.input} ${fieldErrors.email ? styles.inputError : ''}`}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {fieldErrors.email && <span className={styles.fieldError}>{fieldErrors.email}</span>}
+                </motion.div>
+                
+                <motion.div 
+                  className={styles.inputGroup}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <label htmlFor="password" className={styles.inputLabel}>Password</label>
+                  <div className={styles.inputWrapper}>
+                    <Lock className={styles.inputIcon} size={18} />
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: undefined }));
+                      }}
+                      placeholder="••••••••"
+                      className={`${styles.input} ${fieldErrors.password ? styles.inputError : ''}`}
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      className={styles.passwordToggle}
+                      onClick={() => setShowPassword(!showPassword)}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  {fieldErrors.password && <span className={styles.fieldError}>{fieldErrors.password}</span>}
+                </motion.div>
+                
+                <motion.button 
+                  type="submit"
+                  className={styles.primaryButton} 
+                  disabled={isLoading}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  {isLoading ? <div className={styles.spinner} /> : (isSignUp ? 'Sign Up' : 'Sign In')}
+                </motion.button>
+              </motion.form>
+            </AnimatePresence>
             
             <div className={styles.divider}>
               <span className={styles.dividerLine}></span>
@@ -347,10 +404,12 @@ export default function Auth() {
               <span className={styles.dividerLine}></span>
             </div>
             
-            <button 
+            <motion.button 
               className={styles.googleButton} 
               onClick={handleGoogleLogin}
               disabled={isLoading}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
             >
               <svg className={styles.googleIcon} viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -359,24 +418,33 @@ export default function Auth() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
               Continue with Google
-            </button>
+            </motion.button>
             
-            <div className={styles.toggleAuth}>
-              <span className={styles.toggleText}>
-                {isSignUp ? 'Already have an account?' : "Don't have an account?"}
-              </span>
-              <button 
-                type="button"
-                className={styles.toggleButton}
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError('');
-                  setFieldErrors({});
-                }}
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={isSignUp ? 'toggle-signin' : 'toggle-signup'}
+                className={styles.toggleAuth}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
               >
-                {isSignUp ? 'Sign In' : 'Sign Up'}
-              </button>
-            </div>
+                <span className={styles.toggleText}>
+                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                </span>
+                <button 
+                  type="button"
+                  className={styles.toggleButton}
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setError('');
+                    setFieldErrors({});
+                  }}
+                >
+                  {isSignUp ? 'Sign In' : 'Sign Up'}
+                </button>
+              </motion.div>
+            </AnimatePresence>
           </div>
           
           <div className={styles.formFooter}>
