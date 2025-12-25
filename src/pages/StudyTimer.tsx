@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, BarChart3 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { format, formatDistanceToNow, subDays, startOfDay, endOfDay } from 'date-fns';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +32,7 @@ export default function StudyTimer() {
   const [isBreak, setIsBreak] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [weeklyData, setWeeklyData] = useState<{ day: string; minutes: number; date: Date }[]>([]);
+  const [subjectData, setSubjectData] = useState<{ name: string; value: number; color: string }[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [totalToday, setTotalToday] = useState(0);
   const [sessionsToday, setSessionsToday] = useState(0);
@@ -42,10 +43,21 @@ export default function StudyTimer() {
   useEffect(() => {
     fetchSessions();
     fetchWeeklyData();
+    fetchSubjectData();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [user]);
+
+  const SUBJECT_COLORS: Record<string, string> = {
+    'Mathematics': '#2563eb',
+    'Science': '#10b981',
+    'English': '#f59e0b',
+    'History': '#8b5cf6',
+    'Programming': '#06b6d4',
+    'Art': '#ec4899',
+    'Other': '#6b7280'
+  };
 
   const fetchSessions = async () => {
     if (!user) return;
@@ -120,6 +132,35 @@ export default function StudyTimer() {
     setWeeklyData(days);
   };
 
+  const fetchSubjectData = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('study_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .not('end_time', 'is', null);
+    
+    // Aggregate by subject
+    const subjectMinutes: Record<string, number> = {};
+    (data || []).forEach(session => {
+      if (!session.end_time) return;
+      const duration = (new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / 60000;
+      subjectMinutes[session.subject] = (subjectMinutes[session.subject] || 0) + duration;
+    });
+    
+    // Convert to chart format
+    const chartData = Object.entries(subjectMinutes)
+      .map(([name, value]) => ({
+        name,
+        value: Math.round(value),
+        color: SUBJECT_COLORS[name] || '#6b7280'
+      }))
+      .sort((a, b) => b.value - a.value);
+    
+    setSubjectData(chartData);
+  };
+
   const startTimer = useCallback(async () => {
     if (!selectedSubject) {
       toast({ title: 'Select a subject', description: 'Please select a subject before starting', variant: 'destructive' });
@@ -184,6 +225,7 @@ export default function StudyTimer() {
       setCurrentSessionId(null);
       fetchSessions();
       fetchWeeklyData();
+      fetchSubjectData();
       
       // Switch to break
       setIsBreak(true);
@@ -387,62 +429,124 @@ export default function StudyTimer() {
           </div>
         </motion.div>
 
-        {/* Weekly Chart */}
-        <motion.div 
-          className={styles.chartSection}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-        >
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>
-              <BarChart3 size={20} style={{ marginRight: '8px' }} />
-              Weekly Overview
-            </h2>
-          </div>
-          <div className={styles.chartContainer}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-                <XAxis 
-                  dataKey="day" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-                  tickFormatter={(value) => `${value}m`}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    background: 'var(--bg-primary)', 
-                    border: '1px solid var(--border-light)',
-                    borderRadius: '8px',
-                    boxShadow: 'var(--shadow-lg)'
-                  }}
-                  labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
-                  formatter={(value: number) => [`${value} minutes`, 'Study Time']}
-                />
-                <Bar dataKey="minutes" radius={[4, 4, 0, 0]}>
-                  {weeklyData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`}
-                      fill={index === weeklyData.length - 1 ? 'url(#barGradient)' : 'hsl(var(--primary) / 0.3)'}
+        {/* Charts Grid */}
+        <div className={styles.chartsGrid}>
+          {/* Weekly Chart */}
+          <motion.div 
+            className={styles.chartSection}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                <BarChart3 size={20} style={{ marginRight: '8px' }} />
+                Weekly Overview
+              </h2>
+            </div>
+            <div className={styles.chartContainer}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                  <XAxis 
+                    dataKey="day" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                    tickFormatter={(value) => `${value}m`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: 'var(--bg-primary)', 
+                      border: '1px solid var(--border-light)',
+                      borderRadius: '8px',
+                      boxShadow: 'var(--shadow-lg)'
+                    }}
+                    labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                    formatter={(value: number) => [`${value} minutes`, 'Study Time']}
+                  />
+                  <Bar dataKey="minutes" radius={[4, 4, 0, 0]}>
+                    {weeklyData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`}
+                        fill={index === weeklyData.length - 1 ? 'url(#barGradient)' : 'hsl(var(--primary) / 0.3)'}
+                      />
+                    ))}
+                  </Bar>
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" />
+                      <stop offset="100%" stopColor="hsl(var(--primary) / 0.6)" />
+                    </linearGradient>
+                  </defs>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </motion.div>
+
+          {/* Subject Breakdown Pie Chart */}
+          <motion.div 
+            className={styles.chartSection}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                <PieChartIcon size={20} style={{ marginRight: '8px' }} />
+                Subject Breakdown
+              </h2>
+            </div>
+            <div className={styles.chartContainer}>
+              {subjectData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={subjectData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={3}
+                      dataKey="value"
+                      nameKey="name"
+                    >
+                      {subjectData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: 'var(--bg-primary)', 
+                        border: '1px solid var(--border-light)',
+                        borderRadius: '8px',
+                        boxShadow: 'var(--shadow-lg)'
+                      }}
+                      formatter={(value: number, name: string) => [`${value} min`, name]}
                     />
-                  ))}
-                </Bar>
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" />
-                    <stop offset="100%" stopColor="hsl(var(--primary) / 0.6)" />
-                  </linearGradient>
-                </defs>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
+                    <Legend 
+                      layout="vertical" 
+                      align="right" 
+                      verticalAlign="middle"
+                      iconType="circle"
+                      iconSize={10}
+                      formatter={(value) => <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{value}</span>}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className={styles.emptyState}>
+                  <PieChartIcon className={styles.emptyIcon} />
+                  <p>Complete sessions to see breakdown</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </div>
 
         {/* Recent Sessions */}
         <motion.div 

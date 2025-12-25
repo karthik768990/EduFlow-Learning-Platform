@@ -280,6 +280,12 @@
 }
 
 /* Weekly Chart */
+.chartsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
 .chartSection {
   background-color: var(--bg-primary);
   border-radius: var(--radius-lg);
@@ -375,6 +381,10 @@
 
 @media (max-width: 768px) {
   .statsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .chartsGrid {
     grid-template-columns: 1fr;
   }
   
