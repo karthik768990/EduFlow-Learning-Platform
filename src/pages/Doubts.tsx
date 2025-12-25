@@ -157,6 +157,10 @@ export default function Doubts() {
     }
     
     setSubmitting(true);
+    
+    // Find the doubt to get student info
+    const doubt = doubts.find(d => d.id === doubtId);
+    
     const { error } = await supabase.from('doubt_replies').insert({
       doubt_id: doubtId,
       teacher_id: user!.id,
@@ -169,6 +173,42 @@ export default function Doubts() {
       toast({ title: 'Success', description: 'Reply sent!' });
       setReplyText(prev => ({ ...prev, [doubtId]: '' }));
       fetchDoubts();
+      
+      // Send email notification in background
+      if (doubt) {
+        // Get student email
+        const { data: studentProfile } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', doubt.student_id)
+          .single();
+        
+        // Get teacher name
+        const { data: teacherProfile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user!.id)
+          .single();
+        
+        if (studentProfile?.email) {
+          supabase.functions.invoke('send-reply-notification', {
+            body: {
+              studentEmail: studentProfile.email,
+              studentName: studentProfile.full_name || 'Student',
+              teacherName: teacherProfile?.full_name || 'Your teacher',
+              assignmentTitle: doubt.assignment?.title || 'Assignment',
+              question: doubt.question,
+              reply: text
+            }
+          }).then(({ error: emailError }) => {
+            if (emailError) {
+              console.error('Failed to send email notification:', emailError);
+            } else {
+              console.log('Email notification sent successfully');
+            }
+          });
+        }
+      }
     }
     setSubmitting(false);
   };

@@ -1,1 +1,4 @@
 project_id = "bkzhppqfsndtpcsfwrvm"
+
+[functions.send-reply-notification]
+verify_jwt = true
