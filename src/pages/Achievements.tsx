@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Trophy, Target, Clock, BookOpen, Flame, Star, 
-  Award, Zap, Crown, Medal, CheckCircle, Lock
+  Award, Zap, Crown, Medal, CheckCircle, Lock, Users, TrendingUp
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,14 @@ interface Achievement {
   color: string;
   requirement: number;
   type: 'assignments' | 'study_hours' | 'streak';
+}
+
+interface StudentAchievementSummary {
+  user_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  achievement_count: number;
+  achievements: string[];
 }
 
 const ACHIEVEMENTS: Achievement[] = [
@@ -37,7 +45,242 @@ const ACHIEVEMENTS: Achievement[] = [
   { key: 'study_50h', title: 'Study Legend', description: 'Study for 50 hours total', icon: Medal, color: '#14b8a6', requirement: 50, type: 'study_hours' },
 ];
 
-export default function Achievements() {
+// Teacher view component
+function TeacherAchievementsView() {
+  const [studentSummaries, setStudentSummaries] = useState<StudentAchievementSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [achievementStats, setAchievementStats] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetchStudentAchievements();
+  }, []);
+
+  const fetchStudentAchievements = async () => {
+    setLoading(true);
+    
+    // Fetch all achievements
+    const { data: allAchievements } = await supabase
+      .from('user_achievements')
+      .select('user_id, achievement_key');
+    
+    if (!allAchievements || allAchievements.length === 0) {
+      setStudentSummaries([]);
+      setLoading(false);
+      return;
+    }
+
+    // Group by user
+    const userAchievements: Record<string, string[]> = {};
+    const achievementCounts: Record<string, number> = {};
+    
+    allAchievements.forEach(a => {
+      if (!userAchievements[a.user_id]) {
+        userAchievements[a.user_id] = [];
+      }
+      userAchievements[a.user_id].push(a.achievement_key);
+      
+      // Count each achievement type
+      achievementCounts[a.achievement_key] = (achievementCounts[a.achievement_key] || 0) + 1;
+    });
+
+    setAchievementStats(achievementCounts);
+
+    const userIds = Object.keys(userAchievements);
+    
+    // Fetch profiles
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, email')
+      .in('id', userIds);
+
+    // Build summaries
+    const summaries: StudentAchievementSummary[] = userIds.map(userId => {
+      const profile = profiles?.find(p => p.id === userId);
+      const achievements = userAchievements[userId];
+      
+      let displayName = 'Student';
+      if (profile?.full_name) {
+        displayName = profile.full_name;
+      } else if (profile?.email) {
+        displayName = profile.email.split('@')[0];
+      }
+      
+      return {
+        user_id: userId,
+        full_name: displayName,
+        avatar_url: profile?.avatar_url || null,
+        achievement_count: achievements.length,
+        achievements
+      };
+    });
+
+    // Sort by achievement count
+    summaries.sort((a, b) => b.achievement_count - a.achievement_count);
+    
+    setStudentSummaries(summaries);
+    setLoading(false);
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const totalAchievementsEarned = studentSummaries.reduce((acc, s) => acc + s.achievement_count, 0);
+  const studentsWithAchievements = studentSummaries.length;
+
+  return (
+    <div className={styles.container}>
+      {/* Teacher Stats Header */}
+      <motion.div 
+        className={styles.teacherStatsCard}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className={styles.teacherStatItem}>
+          <div className={styles.teacherStatIcon}>
+            <Trophy size={24} />
+          </div>
+          <div className={styles.teacherStatInfo}>
+            <span className={styles.teacherStatValue}>{totalAchievementsEarned}</span>
+            <span className={styles.teacherStatLabel}>Total Achievements Earned</span>
+          </div>
+        </div>
+        <div className={styles.teacherStatItem}>
+          <div className={styles.teacherStatIcon}>
+            <Users size={24} />
+          </div>
+          <div className={styles.teacherStatInfo}>
+            <span className={styles.teacherStatValue}>{studentsWithAchievements}</span>
+            <span className={styles.teacherStatLabel}>Students with Achievements</span>
+          </div>
+        </div>
+        <div className={styles.teacherStatItem}>
+          <div className={styles.teacherStatIcon}>
+            <TrendingUp size={24} />
+          </div>
+          <div className={styles.teacherStatInfo}>
+            <span className={styles.teacherStatValue}>
+              {studentsWithAchievements > 0 ? (totalAchievementsEarned / studentsWithAchievements).toFixed(1) : 0}
+            </span>
+            <span className={styles.teacherStatLabel}>Avg per Student</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Achievement Distribution */}
+      <motion.div 
+        className={styles.distributionCard}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <h2 className={styles.sectionTitle}>Achievement Distribution</h2>
+        <div className={styles.distributionGrid}>
+          {ACHIEVEMENTS.map((achievement, index) => {
+            const count = achievementStats[achievement.key] || 0;
+            const Icon = achievement.icon;
+            
+            return (
+              <motion.div
+                key={achievement.key}
+                className={styles.distributionItem}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.03 }}
+              >
+                <div 
+                  className={styles.distributionIcon}
+                  style={{ background: `linear-gradient(135deg, ${achievement.color}, ${achievement.color}80)` }}
+                >
+                  <Icon size={18} color="white" />
+                </div>
+                <div className={styles.distributionInfo}>
+                  <span className={styles.distributionTitle}>{achievement.title}</span>
+                  <span className={styles.distributionCount}>{count} students</span>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      {/* Top Achievers List */}
+      <motion.div 
+        className={styles.topAchieversCard}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <h2 className={styles.sectionTitle}>Top Achievers</h2>
+        {loading ? (
+          <div className={styles.loadingState}>
+            <div className={styles.spinner} />
+            <p>Loading student achievements...</p>
+          </div>
+        ) : studentSummaries.length === 0 ? (
+          <div className={styles.emptyState}>
+            <Trophy className={styles.emptyIcon} />
+            <h3>No Achievements Yet</h3>
+            <p>Students haven't earned any achievements yet.</p>
+          </div>
+        ) : (
+          <div className={styles.achieversList}>
+            {studentSummaries.slice(0, 10).map((student, index) => (
+              <motion.div
+                key={student.user_id}
+                className={styles.achieverRow}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 * index }}
+              >
+                <div className={styles.achieverRank}>#{index + 1}</div>
+                <div className={styles.achieverAvatar}>
+                  {student.avatar_url ? (
+                    <img src={student.avatar_url} alt={student.full_name} />
+                  ) : (
+                    <div className={styles.achieverAvatarPlaceholder}>
+                      {getInitials(student.full_name)}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.achieverInfo}>
+                  <span className={styles.achieverName}>{student.full_name}</span>
+                  <div className={styles.achieverBadges}>
+                    {student.achievements.slice(0, 5).map(key => {
+                      const achievement = ACHIEVEMENTS.find(a => a.key === key);
+                      if (!achievement) return null;
+                      const Icon = achievement.icon;
+                      return (
+                        <span 
+                          key={key} 
+                          className={styles.miniBadge}
+                          style={{ background: achievement.color }}
+                          title={achievement.title}
+                        >
+                          <Icon size={12} color="white" />
+                        </span>
+                      );
+                    })}
+                    {student.achievements.length > 5 && (
+                      <span className={styles.moreBadges}>+{student.achievements.length - 5}</span>
+                    )}
+                  </div>
+                </div>
+                <div className={styles.achieverCount}>
+                  <span className={styles.achieverCountValue}>{student.achievement_count}</span>
+                  <span className={styles.achieverCountLabel}>badges</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+// Student view component
+function StudentAchievementsView() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [earnedAchievements, setEarnedAchievements] = useState<string[]>([]);
@@ -141,125 +384,133 @@ export default function Achievements() {
   const totalCount = ACHIEVEMENTS.length;
 
   return (
-    <Layout title="Achievements">
-      <div className={styles.container}>
-        {/* Stats Header */}
-        <motion.div 
-          className={styles.statsCard}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className={styles.progressCircle}>
-            <svg viewBox="0 0 100 100">
-              <circle 
-                cx="50" cy="50" r="45" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="8"
-                className={styles.progressBg}
-              />
-              <circle 
-                cx="50" cy="50" r="45" 
-                fill="none" 
-                stroke="url(#gradient)" 
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${(earnedCount / totalCount) * 283} 283`}
-                transform="rotate(-90 50 50)"
-                className={styles.progressFill}
-              />
-              <defs>
-                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" />
-                  <stop offset="100%" stopColor="#8b5cf6" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className={styles.progressText}>
-              <span className={styles.progressCount}>{earnedCount}</span>
-              <span className={styles.progressTotal}>/{totalCount}</span>
+    <div className={styles.container}>
+      {/* Stats Header */}
+      <motion.div 
+        className={styles.statsCard}
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <div className={styles.progressCircle}>
+          <svg viewBox="0 0 100 100">
+            <circle 
+              cx="50" cy="50" r="45" 
+              fill="none" 
+              stroke="currentColor" 
+              strokeWidth="8"
+              className={styles.progressBg}
+            />
+            <circle 
+              cx="50" cy="50" r="45" 
+              fill="none" 
+              stroke="url(#gradient)" 
+              strokeWidth="8"
+              strokeLinecap="round"
+              strokeDasharray={`${(earnedCount / totalCount) * 283} 283`}
+              transform="rotate(-90 50 50)"
+              className={styles.progressFill}
+            />
+            <defs>
+              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="hsl(var(--primary))" />
+                <stop offset="100%" stopColor="#8b5cf6" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div className={styles.progressText}>
+            <span className={styles.progressCount}>{earnedCount}</span>
+            <span className={styles.progressTotal}>/{totalCount}</span>
+          </div>
+        </div>
+        <div className={styles.statsInfo}>
+          <h2>Your Progress</h2>
+          <p>{earnedCount} of {totalCount} achievements unlocked</p>
+          <div className={styles.quickStats}>
+            <div className={styles.quickStat}>
+              <CheckCircle size={16} />
+              <span>{stats.assignments} assignments</span>
+            </div>
+            <div className={styles.quickStat}>
+              <Clock size={16} />
+              <span>{stats.studyHours}h studied</span>
             </div>
           </div>
-          <div className={styles.statsInfo}>
-            <h2>Your Progress</h2>
-            <p>{earnedCount} of {totalCount} achievements unlocked</p>
-            <div className={styles.quickStats}>
-              <div className={styles.quickStat}>
-                <CheckCircle size={16} />
-                <span>{stats.assignments} assignments</span>
-              </div>
-              <div className={styles.quickStat}>
-                <Clock size={16} />
-                <span>{stats.studyHours}h studied</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        </div>
+      </motion.div>
 
-        {/* Achievements Grid */}
-        {loading ? (
-          <div className={styles.loadingState}>
-            <div className={styles.spinner} />
-            <p>Loading achievements...</p>
-          </div>
-        ) : (
-          <div className={styles.achievementsGrid}>
-            {ACHIEVEMENTS.map((achievement, index) => {
-              const isEarned = earnedAchievements.includes(achievement.key);
-              const progress = getProgress(achievement);
-              const Icon = achievement.icon;
-              
-              return (
-                <motion.div
-                  key={achievement.key}
-                  className={`${styles.achievementCard} ${isEarned ? styles.earned : styles.locked}`}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
+      {/* Achievements Grid */}
+      {loading ? (
+        <div className={styles.loadingState}>
+          <div className={styles.spinner} />
+          <p>Loading achievements...</p>
+        </div>
+      ) : (
+        <div className={styles.achievementsGrid}>
+          {ACHIEVEMENTS.map((achievement, index) => {
+            const isEarned = earnedAchievements.includes(achievement.key);
+            const progress = getProgress(achievement);
+            const Icon = achievement.icon;
+            
+            return (
+              <motion.div
+                key={achievement.key}
+                className={`${styles.achievementCard} ${isEarned ? styles.earned : styles.locked}`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <div 
+                  className={styles.iconWrapper}
+                  style={{ 
+                    background: isEarned 
+                      ? `linear-gradient(135deg, ${achievement.color}, ${achievement.color}80)` 
+                      : undefined 
+                  }}
                 >
-                  <div 
-                    className={styles.iconWrapper}
-                    style={{ 
-                      background: isEarned 
-                        ? `linear-gradient(135deg, ${achievement.color}, ${achievement.color}80)` 
-                        : undefined 
-                    }}
-                  >
-                    {isEarned ? (
-                      <Icon size={28} color="white" />
-                    ) : (
-                      <Lock size={24} />
-                    )}
-                  </div>
+                  {isEarned ? (
+                    <Icon size={28} color="white" />
+                  ) : (
+                    <Lock size={24} />
+                  )}
+                </div>
+                
+                <div className={styles.achievementInfo}>
+                  <h3 className={styles.achievementTitle}>{achievement.title}</h3>
+                  <p className={styles.achievementDesc}>{achievement.description}</p>
                   
-                  <div className={styles.achievementInfo}>
-                    <h3 className={styles.achievementTitle}>{achievement.title}</h3>
-                    <p className={styles.achievementDesc}>{achievement.description}</p>
-                    
-                    {!isEarned && (
-                      <div className={styles.progressSection}>
-                        <div className={styles.progressBar}>
-                          <div 
-                            className={styles.progressFillBar}
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <span className={styles.progressLabel}>{getProgressText(achievement)}</span>
+                  {!isEarned && (
+                    <div className={styles.progressSection}>
+                      <div className={styles.progressBar}>
+                        <div 
+                          className={styles.progressFillBar}
+                          style={{ width: `${progress}%` }}
+                        />
                       </div>
-                    )}
-                  </div>
-                  
-                  {isEarned && (
-                    <div className={styles.earnedBadge}>
-                      <CheckCircle size={16} />
+                      <span className={styles.progressLabel}>{getProgressText(achievement)}</span>
                     </div>
                   )}
-                </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                </div>
+                
+                {isEarned && (
+                  <div className={styles.earnedBadge}>
+                    <CheckCircle size={16} />
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function Achievements() {
+  const { role } = useAuth();
+  
+  return (
+    <Layout title={role === 'teacher' ? 'Student Achievements' : 'Achievements'}>
+      {role === 'teacher' ? <TeacherAchievementsView /> : <StudentAchievementsView />}
     </Layout>
   );
 }
