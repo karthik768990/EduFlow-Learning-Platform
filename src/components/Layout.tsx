@@ -1,9 +1,10 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award, Sun, Moon, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Sidebar,
   SidebarContent,
@@ -46,6 +47,25 @@ function AppSidebar() {
   const { state } = useSidebar();
   const navigate = useNavigate();
   const isCollapsed = state === 'collapsed';
+  const [profileData, setProfileData] = useState<{ full_name: string | null; avatar_url: string | null }>({ full_name: null, avatar_url: null });
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url')
+      .eq('id', user!.id)
+      .maybeSingle();
+    
+    if (data) {
+      setProfileData({ full_name: data.full_name, avatar_url: data.avatar_url });
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -68,7 +88,11 @@ function AppSidebar() {
   ];
 
   const navItems = role === 'teacher' ? teacherNav : studentNav;
-  const initials = user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('') || user?.email?.[0]?.toUpperCase() || 'U';
+  const displayName = profileData.full_name || user?.user_metadata?.full_name || user?.email;
+  const initials = profileData.full_name?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) 
+    || user?.user_metadata?.full_name?.split(' ').map((n: string) => n[0]).join('') 
+    || user?.email?.[0]?.toUpperCase() 
+    || 'U';
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -128,16 +152,27 @@ function AppSidebar() {
           "flex items-center rounded-md",
           isCollapsed ? "justify-center p-1" : "gap-3 p-2 mb-2"
         )}>
-          <div className={cn(
-            "rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold shrink-0 transition-all",
-            isCollapsed ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm"
-          )}>
-            {initials}
-          </div>
+          {profileData.avatar_url ? (
+            <img 
+              src={profileData.avatar_url} 
+              alt="Profile" 
+              className={cn(
+                "rounded-full object-cover shrink-0 transition-all",
+                isCollapsed ? "w-8 h-8" : "w-10 h-10"
+              )}
+            />
+          ) : (
+            <div className={cn(
+              "rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold shrink-0 transition-all",
+              isCollapsed ? "w-8 h-8 text-xs" : "w-10 h-10 text-sm"
+            )}>
+              {initials}
+            </div>
+          )}
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-sidebar-foreground truncate">
-                {user?.user_metadata?.full_name || user?.email}
+                {displayName}
               </div>
               <div className="text-xs text-sidebar-foreground/50 capitalize">{role}</div>
             </div>
