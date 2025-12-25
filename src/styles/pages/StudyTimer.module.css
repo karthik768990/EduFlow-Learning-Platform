@@ -288,8 +288,17 @@
 }
 
 .chartContainer {
-  height: 300px;
-  padding: var(--space-6);
+  height: 250px;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.sectionHeader .sectionTitle {
+  display: flex;
+  align-items: center;
+}
+
+:global(.dark) .chartSection {
+  border: 1px solid var(--border-light);
 }
 
 /* Pulsing Animation */

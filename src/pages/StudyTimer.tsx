@@ -1,7 +1,8 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, BarChart3 } from 'lucide-react';
+import { format, formatDistanceToNow, subDays, startOfDay, endOfDay } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,6 +31,7 @@ export default function StudyTimer() {
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [weeklyData, setWeeklyData] = useState<{ day: string; minutes: number; date: Date }[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [totalToday, setTotalToday] = useState(0);
   const [sessionsToday, setSessionsToday] = useState(0);
@@ -39,6 +41,7 @@ export default function StudyTimer() {
 
   useEffect(() => {
     fetchSessions();
+    fetchWeeklyData();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -76,6 +79,45 @@ export default function StudyTimer() {
     }, 0);
     
     setTotalToday(Math.round(totalMinutes));
+  };
+
+  const fetchWeeklyData = async () => {
+    if (!user) return;
+    
+    const today = new Date();
+    const weekAgo = subDays(today, 6);
+    
+    const { data } = await supabase
+      .from('study_sessions')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('start_time', startOfDay(weekAgo).toISOString())
+      .lte('start_time', endOfDay(today).toISOString())
+      .not('end_time', 'is', null);
+    
+    // Create array for last 7 days
+    const days: { day: string; minutes: number; date: Date }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(today, i);
+      days.push({
+        day: format(date, 'EEE'),
+        minutes: 0,
+        date: startOfDay(date)
+      });
+    }
+    
+    // Aggregate session data
+    (data || []).forEach(session => {
+      if (!session.end_time) return;
+      const sessionDate = startOfDay(new Date(session.start_time));
+      const dayEntry = days.find(d => d.date.getTime() === sessionDate.getTime());
+      if (dayEntry) {
+        const duration = (new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / 60000;
+        dayEntry.minutes += Math.round(duration);
+      }
+    });
+    
+    setWeeklyData(days);
   };
 
   const startTimer = useCallback(async () => {
@@ -141,6 +183,7 @@ export default function StudyTimer() {
       
       setCurrentSessionId(null);
       fetchSessions();
+      fetchWeeklyData();
       
       // Switch to break
       setIsBreak(true);
@@ -341,6 +384,63 @@ export default function StudyTimer() {
                 <Play size={28} style={{ marginLeft: '4px' }} />
               </button>
             )}
+          </div>
+        </motion.div>
+
+        {/* Weekly Chart */}
+        <motion.div 
+          className={styles.chartSection}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              <BarChart3 size={20} style={{ marginRight: '8px' }} />
+              Weekly Overview
+            </h2>
+          </div>
+          <div className={styles.chartContainer}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
+                <XAxis 
+                  dataKey="day" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
+                  tickFormatter={(value) => `${value}m`}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    background: 'var(--bg-primary)', 
+                    border: '1px solid var(--border-light)',
+                    borderRadius: '8px',
+                    boxShadow: 'var(--shadow-lg)'
+                  }}
+                  labelStyle={{ color: 'var(--text-primary)', fontWeight: 600 }}
+                  formatter={(value: number) => [`${value} minutes`, 'Study Time']}
+                />
+                <Bar dataKey="minutes" radius={[4, 4, 0, 0]}>
+                  {weeklyData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`}
+                      fill={index === weeklyData.length - 1 ? 'url(#barGradient)' : 'hsl(var(--primary) / 0.3)'}
+                    />
+                  ))}
+                </Bar>
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(var(--primary))" />
+                    <stop offset="100%" stopColor="hsl(var(--primary) / 0.6)" />
+                  </linearGradient>
+                </defs>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </motion.div>
 
