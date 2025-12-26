@@ -13,7 +13,6 @@ import Achievements from '@/pages/Achievements';
 import { Toaster } from '@/components/ui/toaster';
 import '@/styles/global.css';
 
-
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
   
