@@ -1,11 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Calendar as CalendarIcon, Clock, CheckCircle, Edit2, Trash2, X, Send, FileText, List, Grid3X3 } from 'lucide-react';
 import { format, isPast, formatDistanceToNow, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useAssignments } from '@/hooks/useAssignments';
 import styles from '@/styles/pages/Assignments.module.css';
 
 interface Assignment {
@@ -17,20 +16,20 @@ interface Assignment {
   created_at: string;
 }
 
-interface Submission {
-  id: string;
-  assignment_id: string;
-  completed_at: string;
-  duration_seconds: number;
-  reflection: string | null;
-}
-
 export default function Assignments() {
-  const { user, role } = useAuth();
-  const { toast } = useToast();
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { role } = useAuth();
+  const { 
+    assignments, 
+    isLoading, 
+    createAssignment, 
+    updateAssignment, 
+    deleteAssignment, 
+    submitAssignment, 
+    isSubmitting,
+    isCompleted, 
+    getSubmission 
+  } = useAssignments();
+  
   const [showModal, setShowModal] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -59,114 +58,35 @@ export default function Assignments() {
     return assignments.filter(a => a.due_date && isSameDay(new Date(a.due_date), day));
   };
 
-  useEffect(() => {
-    fetchAssignments();
-    if (role === 'student') {
-      fetchSubmissions();
-    }
-  }, [user, role]);
-
-  const fetchAssignments = async () => {
-    setLoading(true);
-    let query = supabase.from('assignments').select('*').order('due_date', { ascending: true });
-    
-    if (role === 'teacher') {
-      query = query.eq('teacher_id', user!.id);
-    }
-    
-    const { data, error } = await query;
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to load assignments', variant: 'destructive' });
-    } else {
-      setAssignments(data || []);
-    }
-    setLoading(false);
-  };
-
-  const fetchSubmissions = async () => {
-    const { data } = await supabase
-      .from('submissions')
-      .select('*')
-      .eq('student_id', user!.id);
-    setSubmissions(data || []);
-  };
-
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title.trim()) {
-      toast({ title: 'Error', description: 'Title is required', variant: 'destructive' });
-      return;
-    }
+    if (!formData.title.trim()) return;
 
     const assignmentData = {
       title: formData.title.trim(),
       description: formData.description.trim() || null,
-      due_date: formData.due_date || null,
-      teacher_id: user!.id
+      due_date: formData.due_date || null
     };
 
     if (editingAssignment) {
-      const { error } = await supabase
-        .from('assignments')
-        .update(assignmentData)
-        .eq('id', editingAssignment.id);
-      
-      if (error) {
-        toast({ title: 'Error', description: 'Failed to update assignment', variant: 'destructive' });
-      } else {
-        toast({ title: 'Success', description: 'Assignment updated' });
-        closeModal();
-        fetchAssignments();
-      }
+      await updateAssignment({ id: editingAssignment.id, data: assignmentData });
     } else {
-      const { error } = await supabase
-        .from('assignments')
-        .insert(assignmentData);
-      
-      if (error) {
-        toast({ title: 'Error', description: 'Failed to create assignment', variant: 'destructive' });
-      } else {
-        toast({ title: 'Success', description: 'Assignment created' });
-        closeModal();
-        fetchAssignments();
-      }
+      await createAssignment(assignmentData);
     }
+    closeModal();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this assignment?')) return;
-    
-    const { error } = await supabase.from('assignments').delete().eq('id', id);
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to delete assignment', variant: 'destructive' });
-    } else {
-      toast({ title: 'Success', description: 'Assignment deleted' });
-      fetchAssignments();
-    }
+    await deleteAssignment(id);
   };
 
   const handleSubmit = async (assignmentId: string) => {
-    if (!reflection.trim()) {
-      toast({ title: 'Required', description: 'Please add a reflection before submitting', variant: 'destructive' });
-      return;
-    }
-
-    const { error } = await supabase.from('submissions').insert({
-      assignment_id: assignmentId,
-      student_id: user!.id,
-      reflection: reflection.trim(),
-      duration_seconds: 0
-    });
-
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to submit assignment', variant: 'destructive' });
-    } else {
-      toast({ title: 'Success', description: 'Assignment completed!' });
-      setSubmittingId(null);
-      setReflection('');
-      fetchSubmissions();
-    }
+    if (!reflection.trim()) return;
+    await submitAssignment({ assignmentId, reflection });
+    setSubmittingId(null);
+    setReflection('');
   };
 
   const openCreateModal = () => {
@@ -191,14 +111,6 @@ export default function Assignments() {
     setFormData({ title: '', description: '', due_date: '' });
   };
 
-  const isCompleted = (assignmentId: string) => {
-    return submissions.some(s => s.assignment_id === assignmentId);
-  };
-
-  const getSubmission = (assignmentId: string) => {
-    return submissions.find(s => s.assignment_id === assignmentId);
-  };
-
   const getStatusBadge = (assignment: Assignment) => {
     if (role === 'student' && isCompleted(assignment.id)) {
       return <span className={`${styles.badge} ${styles.completed}`}><CheckCircle size={14} /> Completed</span>;
@@ -220,7 +132,7 @@ export default function Assignments() {
             <p className={styles.subtitle}>
               {role === 'teacher' 
                 ? `${assignments.length} assignment${assignments.length !== 1 ? 's' : ''} created`
-                : `${submissions.length} of ${assignments.length} completed`}
+                : `${assignments.filter(a => isCompleted(a.id)).length} of ${assignments.length} completed`}
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -249,7 +161,7 @@ export default function Assignments() {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className={styles.loadingState}>
             <div className={styles.spinner} />
             <p>Loading assignments...</p>
@@ -390,7 +302,7 @@ export default function Assignments() {
                             <button className={styles.cancelButton} onClick={() => { setSubmittingId(null); setReflection(''); }}>
                               Cancel
                             </button>
-                            <button className={styles.submitButton} onClick={() => handleSubmit(assignment.id)}>
+                            <button className={styles.submitButton} onClick={() => handleSubmit(assignment.id)} disabled={isSubmitting}>
                               <Send size={16} />
                               Submit
                             </button>
@@ -454,7 +366,7 @@ export default function Assignments() {
                       id="description"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="Describe the assignment..."
+                      placeholder="Enter assignment description"
                       className={styles.formTextarea}
                       rows={4}
                     />
@@ -475,7 +387,7 @@ export default function Assignments() {
                     <button type="button" className={styles.cancelButton} onClick={closeModal}>
                       Cancel
                     </button>
-                    <button type="submit" className={styles.submitButton}>
+                    <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                       {editingAssignment ? 'Update Assignment' : 'Create Assignment'}
                     </button>
                   </div>
