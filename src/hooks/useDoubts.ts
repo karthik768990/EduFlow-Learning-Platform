@@ -22,18 +22,15 @@ interface Reply {
   teacher?: { full_name: string; avatar_url: string | null };
 }
 
-interface Assignment {
-  id: string;
-  title: string;
-}
-
 export function useDoubts() {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const queryKey = ['doubts', user?.id, role];
+
   const doubtsQuery = useQuery({
-    queryKey: ['doubts', user?.id, role],
+    queryKey,
     queryFn: async () => {
       let query = supabase.from('doubts').select('*').order('created_at', { ascending: false });
       
@@ -82,8 +79,8 @@ export function useDoubts() {
       return enrichedDoubts;
     },
     enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 
   const assignmentsQuery = useQuery({
@@ -102,19 +99,44 @@ export function useDoubts() {
 
   const createDoubtMutation = useMutation({
     mutationFn: async ({ assignment_id, question }: { assignment_id: string; question: string }) => {
-      const { error } = await supabase.from('doubts').insert({
+      const { data, error } = await supabase.from('doubts').insert({
         student_id: user!.id,
         assignment_id,
         question: question.trim()
-      });
+      }).select().single();
       if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ assignment_id, question }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousDoubts = queryClient.getQueryData<Doubt[]>(queryKey);
+      
+      const assignment = assignmentsQuery.data?.find(a => a.id === assignment_id);
+      const optimisticDoubt: Doubt = {
+        id: `temp-${Date.now()}`,
+        question: question.trim(),
+        student_id: user!.id,
+        assignment_id,
+        created_at: new Date().toISOString(),
+        assignment: assignment ? { title: assignment.title } : undefined,
+        student: { full_name: user?.user_metadata?.full_name || 'You', avatar_url: null },
+        replies: []
+      };
+      
+      queryClient.setQueryData<Doubt[]>(queryKey, (old) => [optimisticDoubt, ...(old || [])]);
+      return { previousDoubts };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousDoubts) {
+        queryClient.setQueryData(queryKey, context.previousDoubts);
+      }
+      toast({ title: 'Error', description: 'Failed to submit question', variant: 'destructive' });
     },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Your question has been submitted!' });
-      queryClient.invalidateQueries({ queryKey: ['doubts'] });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to submit question', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     }
   });
 
@@ -122,29 +144,70 @@ export function useDoubts() {
     mutationFn: async (doubtId: string) => {
       const { error } = await supabase.from('doubts').delete().eq('id', doubtId);
       if (error) throw error;
+      return doubtId;
+    },
+    onMutate: async (doubtId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousDoubts = queryClient.getQueryData<Doubt[]>(queryKey);
+      
+      queryClient.setQueryData<Doubt[]>(queryKey, (old) => 
+        (old || []).filter(d => d.id !== doubtId)
+      );
+      return { previousDoubts };
+    },
+    onError: (err, doubtId, context) => {
+      if (context?.previousDoubts) {
+        queryClient.setQueryData(queryKey, context.previousDoubts);
+      }
+      toast({ title: 'Error', description: 'Failed to delete question', variant: 'destructive' });
     },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Question deleted' });
-      queryClient.invalidateQueries({ queryKey: ['doubts'] });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete question', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     }
   });
 
   const replyMutation = useMutation({
     mutationFn: async ({ doubtId, reply }: { doubtId: string; reply: string }) => {
-      const { error } = await supabase.from('doubt_replies').insert({
+      const { data, error } = await supabase.from('doubt_replies').insert({
         doubt_id: doubtId,
         teacher_id: user!.id,
         reply: reply.trim()
-      });
+      }).select().single();
       if (error) throw error;
-      return doubtId;
+      return { doubtId, replyData: data };
     },
-    onSuccess: async (doubtId) => {
+    onMutate: async ({ doubtId, reply }) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousDoubts = queryClient.getQueryData<Doubt[]>(queryKey);
+      
+      const optimisticReply: Reply = {
+        id: `temp-${Date.now()}`,
+        reply: reply.trim(),
+        teacher_id: user!.id,
+        created_at: new Date().toISOString(),
+        teacher: { full_name: user?.user_metadata?.full_name || 'You', avatar_url: null }
+      };
+      
+      queryClient.setQueryData<Doubt[]>(queryKey, (old) => 
+        (old || []).map(d => 
+          d.id === doubtId 
+            ? { ...d, replies: [...d.replies, optimisticReply] }
+            : d
+        )
+      );
+      return { previousDoubts };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousDoubts) {
+        queryClient.setQueryData(queryKey, context.previousDoubts);
+      }
+      toast({ title: 'Error', description: 'Failed to send reply', variant: 'destructive' });
+    },
+    onSuccess: async ({ doubtId }) => {
       toast({ title: 'Success', description: 'Reply sent!' });
-      queryClient.invalidateQueries({ queryKey: ['doubts'] });
       
       // Send email notification in background
       const doubt = doubtsQuery.data?.find(d => d.id === doubtId);
@@ -175,8 +238,8 @@ export function useDoubts() {
         }
       }
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to send reply', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
     }
   });
 

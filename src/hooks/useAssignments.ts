@@ -25,8 +25,11 @@ export function useAssignments() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const assignmentsKey = ['assignments', user?.id, role];
+  const submissionsKey = ['submissions', user?.id];
+
   const assignmentsQuery = useQuery({
-    queryKey: ['assignments', user?.id, role],
+    queryKey: assignmentsKey,
     queryFn: async () => {
       let query = supabase.from('assignments').select('*').order('due_date', { ascending: true });
       
@@ -44,7 +47,7 @@ export function useAssignments() {
   });
 
   const submissionsQuery = useQuery({
-    queryKey: ['submissions', user?.id],
+    queryKey: submissionsKey,
     queryFn: async () => {
       const { data } = await supabase
         .from('submissions')
@@ -59,18 +62,40 @@ export function useAssignments() {
 
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: { title: string; description: string | null; due_date: string | null }) => {
-      const { error } = await supabase.from('assignments').insert({
+      const { data: newAssignment, error } = await supabase.from('assignments').insert({
         ...data,
         teacher_id: user!.id
-      });
+      }).select().single();
       if (error) throw error;
+      return newAssignment;
+    },
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: assignmentsKey });
+      const previousAssignments = queryClient.getQueryData<Assignment[]>(assignmentsKey);
+      
+      const optimisticAssignment: Assignment = {
+        id: `temp-${Date.now()}`,
+        title: data.title,
+        description: data.description,
+        due_date: data.due_date,
+        teacher_id: user!.id,
+        created_at: new Date().toISOString()
+      };
+      
+      queryClient.setQueryData<Assignment[]>(assignmentsKey, (old) => [...(old || []), optimisticAssignment]);
+      return { previousAssignments };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousAssignments) {
+        queryClient.setQueryData(assignmentsKey, context.previousAssignments);
+      }
+      toast({ title: 'Error', description: 'Failed to create assignment', variant: 'destructive' });
     },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Assignment created' });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to create assignment', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentsKey });
     }
   });
 
@@ -81,13 +106,28 @@ export function useAssignments() {
         teacher_id: user!.id
       }).eq('id', id);
       if (error) throw error;
+      return { id, data };
+    },
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: assignmentsKey });
+      const previousAssignments = queryClient.getQueryData<Assignment[]>(assignmentsKey);
+      
+      queryClient.setQueryData<Assignment[]>(assignmentsKey, (old) => 
+        (old || []).map(a => a.id === id ? { ...a, ...data } : a)
+      );
+      return { previousAssignments };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousAssignments) {
+        queryClient.setQueryData(assignmentsKey, context.previousAssignments);
+      }
+      toast({ title: 'Error', description: 'Failed to update assignment', variant: 'destructive' });
     },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Assignment updated' });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to update assignment', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentsKey });
     }
   });
 
@@ -95,34 +135,70 @@ export function useAssignments() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from('assignments').delete().eq('id', id);
       if (error) throw error;
+      return id;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: assignmentsKey });
+      const previousAssignments = queryClient.getQueryData<Assignment[]>(assignmentsKey);
+      
+      queryClient.setQueryData<Assignment[]>(assignmentsKey, (old) => 
+        (old || []).filter(a => a.id !== id)
+      );
+      return { previousAssignments };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousAssignments) {
+        queryClient.setQueryData(assignmentsKey, context.previousAssignments);
+      }
+      toast({ title: 'Error', description: 'Failed to delete assignment', variant: 'destructive' });
     },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Assignment deleted' });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete assignment', variant: 'destructive' });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: assignmentsKey });
     }
   });
 
   const submitAssignmentMutation = useMutation({
     mutationFn: async ({ assignmentId, reflection }: { assignmentId: string; reflection: string }) => {
-      const { error } = await supabase.from('submissions').insert({
+      const { data, error } = await supabase.from('submissions').insert({
         assignment_id: assignmentId,
         student_id: user!.id,
         reflection: reflection.trim(),
         duration_seconds: 0
-      });
+      }).select().single();
       if (error) throw error;
+      return data;
+    },
+    onMutate: async ({ assignmentId, reflection }) => {
+      await queryClient.cancelQueries({ queryKey: submissionsKey });
+      const previousSubmissions = queryClient.getQueryData<Submission[]>(submissionsKey);
+      
+      const optimisticSubmission: Submission = {
+        id: `temp-${Date.now()}`,
+        assignment_id: assignmentId,
+        completed_at: new Date().toISOString(),
+        duration_seconds: 0,
+        reflection: reflection.trim()
+      };
+      
+      queryClient.setQueryData<Submission[]>(submissionsKey, (old) => [...(old || []), optimisticSubmission]);
+      return { previousSubmissions };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousSubmissions) {
+        queryClient.setQueryData(submissionsKey, context.previousSubmissions);
+      }
+      toast({ title: 'Error', description: 'Failed to submit assignment', variant: 'destructive' });
     },
     onSuccess: () => {
       toast({ title: 'Success', description: 'Assignment completed!' });
-      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: submissionsKey });
       queryClient.invalidateQueries({ queryKey: ['student-stats'] });
       queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to submit assignment', variant: 'destructive' });
     }
   });
 
