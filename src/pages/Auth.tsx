@@ -62,7 +62,13 @@ export default function Auth() {
   if (loading) {
     return (
       <div className={styles.authContainer}>
-        <div className={styles.spinner} />
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingLogo}>
+            <BookOpen size={40} />
+          </div>
+          <div className={styles.loadingSpinner} />
+          <p className={styles.loadingText}>Loading...</p>
+        </div>
       </div>
     );
   }
