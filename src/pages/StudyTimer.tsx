@@ -24,7 +24,8 @@ export default function StudyTimer() {
   const { 
     timeLeft, 
     isRunning, 
-    isBreak, 
+    isBreak,
+    isLongBreak,
     selectedSubject, 
     setSelectedSubject,
     startTimer,
@@ -36,7 +37,8 @@ export default function StudyTimer() {
     BREAK_TIME,
     settings,
     updateSettings,
-    requestNotificationPermission
+    requestNotificationPermission,
+    pomodoroCount
   } = useTimer();
   
   const [showSettings, setShowSettings] = useState(false);
@@ -203,7 +205,16 @@ export default function StudyTimer() {
             transition={{ delay: 0.2 }}
           >
             <div className={styles.statValue}>{Math.floor(totalToday / 25)}</div>
-            <div className={styles.statLabel}>Pomodoros</div>
+            <div className={styles.statLabel}>Pomodoros Today</div>
+          </motion.div>
+          <motion.div 
+            className={styles.statCard}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className={styles.statValue}>{pomodoroCount % 4}/4</div>
+            <div className={styles.statLabel}>Until Long Break</div>
           </motion.div>
         </div>
 
@@ -261,7 +272,7 @@ export default function StudyTimer() {
               <div className={styles.timerLabel}>
                 {isBreak ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Coffee size={16} /> Break Time
+                    <Coffee size={16} /> {isLongBreak ? 'Long Break' : 'Short Break'}
                   </span>
                 ) : (
                   <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
