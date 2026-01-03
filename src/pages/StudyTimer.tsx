@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, BarChart3, PieChart as PieChartIcon, Volume2, VolumeX, Bell, BellOff, Settings } from 'lucide-react';
 import { format, formatDistanceToNow, subDays, startOfDay, endOfDay } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import Layout from '@/components/Layout';
@@ -33,8 +33,13 @@ export default function StudyTimer() {
     formatTime,
     progress,
     WORK_TIME,
-    BREAK_TIME
+    BREAK_TIME,
+    settings,
+    updateSettings,
+    requestNotificationPermission
   } = useTimer();
+  
+  const [showSettings, setShowSettings] = useState(false);
   
   const [sessions, setSessions] = useState<Session[]>([]);
   const [weeklyData, setWeeklyData] = useState<{ day: string; minutes: number; date: Date }[]>([]);
@@ -294,6 +299,66 @@ export default function StudyTimer() {
               </button>
             )}
           </div>
+
+          {/* Settings Toggle */}
+          <button 
+            className={styles.settingsToggle}
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <Settings size={18} />
+            Settings
+          </button>
+
+          {/* Settings Panel */}
+          {showSettings && (
+            <motion.div 
+              className={styles.settingsPanel}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <div className={styles.settingItem}>
+                <div className={styles.settingInfo}>
+                  {settings.soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                  <div>
+                    <div className={styles.settingLabel}>Sound</div>
+                    <div className={styles.settingDesc}>Play sound when timer completes</div>
+                  </div>
+                </div>
+                <button 
+                  className={`${styles.settingToggle} ${settings.soundEnabled ? styles.active : ''}`}
+                  onClick={() => updateSettings({ soundEnabled: !settings.soundEnabled })}
+                >
+                  <span className={styles.toggleKnob} />
+                </button>
+              </div>
+              
+              <div className={styles.settingItem}>
+                <div className={styles.settingInfo}>
+                  {settings.notificationsEnabled ? <Bell size={20} /> : <BellOff size={20} />}
+                  <div>
+                    <div className={styles.settingLabel}>Notifications</div>
+                    <div className={styles.settingDesc}>Browser notifications when timer completes</div>
+                  </div>
+                </div>
+                <button 
+                  className={`${styles.settingToggle} ${settings.notificationsEnabled ? styles.active : ''}`}
+                  onClick={async () => {
+                    if (!settings.notificationsEnabled) {
+                      const granted = await requestNotificationPermission();
+                      if (granted) {
+                        updateSettings({ notificationsEnabled: true });
+                      }
+                    } else {
+                      updateSettings({ notificationsEnabled: false });
+                    }
+                  }}
+                >
+                  <span className={styles.toggleKnob} />
+                </button>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Charts Grid */}

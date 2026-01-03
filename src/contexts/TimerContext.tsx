@@ -7,12 +7,18 @@ import { playWorkCompleteSound, playBreakCompleteSound } from '@/lib/audio';
 const WORK_TIME = 25 * 60; // 25 minutes
 const BREAK_TIME = 5 * 60; // 5 minutes
 
+interface TimerSettings {
+  soundEnabled: boolean;
+  notificationsEnabled: boolean;
+}
+
 interface TimerContextType {
   timeLeft: number;
   isRunning: boolean;
   isBreak: boolean;
   selectedSubject: string;
   currentSessionId: string | null;
+  settings: TimerSettings;
   setSelectedSubject: (subject: string) => void;
   startTimer: () => Promise<void>;
   pauseTimer: () => Promise<void>;
@@ -21,6 +27,8 @@ interface TimerContextType {
   progress: number;
   WORK_TIME: number;
   BREAK_TIME: number;
+  updateSettings: (settings: Partial<TimerSettings>) => void;
+  requestNotificationPermission: () => Promise<boolean>;
 }
 
 const TimerContext = createContext<TimerContextType | null>(null);
@@ -33,6 +41,20 @@ export const useTimer = () => {
   return context;
 };
 
+const loadSettings = (): TimerSettings => {
+  try {
+    const saved = localStorage.getItem('timerSettings');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {}
+  return { soundEnabled: true, notificationsEnabled: false };
+};
+
+const saveSettings = (settings: TimerSettings) => {
+  localStorage.setItem('timerSettings', JSON.stringify(settings));
+};
+
 export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -42,6 +64,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [settings, setSettings] = useState<TimerSettings>(loadSettings);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -54,6 +77,39 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
   }, []);
 
+  const updateSettings = useCallback((newSettings: Partial<TimerSettings>) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      saveSettings(updated);
+      return updated;
+    });
+  }, []);
+
+  const requestNotificationPermission = useCallback(async (): Promise<boolean> => {
+    if (!('Notification' in window)) {
+      toast({ title: 'Not Supported', description: 'Browser notifications are not supported', variant: 'destructive' });
+      return false;
+    }
+    
+    if (Notification.permission === 'granted') {
+      return true;
+    }
+    
+    const permission = await Notification.requestPermission();
+    return permission === 'granted';
+  }, [toast]);
+
+  const showNotification = useCallback((title: string, body: string) => {
+    if (settings.notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/eduFlow.png',
+        badge: '/eduFlow.png',
+        tag: 'timer-notification'
+      });
+    }
+  }, [settings.notificationsEnabled]);
+
   const handleTimerComplete = useCallback(async () => {
     setIsRunning(false);
     
@@ -64,7 +120,11 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .update({ end_time: new Date().toISOString(), is_active: false })
         .eq('id', currentSessionId);
       
-      playWorkCompleteSound();
+      if (settings.soundEnabled) {
+        playWorkCompleteSound();
+      }
+      
+      showNotification('Great work! 🎉', 'Pomodoro complete! Take a 5 minute break.');
       
       toast({ 
         title: 'Great work! 🎉', 
@@ -77,7 +137,11 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsBreak(true);
       setTimeLeft(BREAK_TIME);
     } else {
-      playBreakCompleteSound();
+      if (settings.soundEnabled) {
+        playBreakCompleteSound();
+      }
+      
+      showNotification('Break over!', 'Ready for another focused session?');
       
       toast({ 
         title: 'Break over!', 
@@ -87,7 +151,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsBreak(false);
       setTimeLeft(WORK_TIME);
     }
-  }, [isBreak, currentSessionId, toast]);
+  }, [isBreak, currentSessionId, toast, settings.soundEnabled, showNotification]);
 
   const startTimer = useCallback(async () => {
     if (!selectedSubject) {
@@ -197,6 +261,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isBreak,
         selectedSubject,
         currentSessionId,
+        settings,
         setSelectedSubject,
         startTimer,
         pauseTimer,
@@ -204,7 +269,9 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         formatTime,
         progress,
         WORK_TIME,
-        BREAK_TIME
+        BREAK_TIME,
+        updateSettings,
+        requestNotificationPermission
       }}
     >
       {children}
