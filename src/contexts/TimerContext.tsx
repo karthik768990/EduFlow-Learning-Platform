@@ -5,7 +5,9 @@ import { useToast } from '@/hooks/use-toast';
 import { playWorkCompleteSound, playBreakCompleteSound } from '@/lib/audio';
 
 const WORK_TIME = 25 * 60; // 25 minutes
-const BREAK_TIME = 5 * 60; // 5 minutes
+const SHORT_BREAK_TIME = 5 * 60; // 5 minutes
+const LONG_BREAK_TIME = 20 * 60; // 20 minutes
+const POMODOROS_BEFORE_LONG_BREAK = 4;
 
 interface TimerSettings {
   soundEnabled: boolean;
@@ -16,9 +18,11 @@ interface TimerContextType {
   timeLeft: number;
   isRunning: boolean;
   isBreak: boolean;
+  isLongBreak: boolean;
   selectedSubject: string;
   currentSessionId: string | null;
   settings: TimerSettings;
+  pomodoroCount: number;
   setSelectedSubject: (subject: string) => void;
   startTimer: () => Promise<void>;
   pauseTimer: () => Promise<void>;
@@ -63,8 +67,10 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [timeLeft, setTimeLeft] = useState(WORK_TIME);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
+  const [isLongBreak, setIsLongBreak] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [settings, setSettings] = useState<TimerSettings>(loadSettings);
+  const [pomodoroCount, setPomodoroCount] = useState(0);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -113,7 +119,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const handleTimerComplete = useCallback(async () => {
     setIsRunning(false);
     
-    if (!isBreak && currentSessionId) {
+    if (!isBreak && !isLongBreak && currentSessionId) {
       // End the work session
       await supabase
         .from('study_sessions')
@@ -124,18 +130,32 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         playWorkCompleteSound();
       }
       
-      showNotification('Great work! 🎉', 'Pomodoro complete! Take a 5 minute break.');
+      const newPomodoroCount = pomodoroCount + 1;
+      setPomodoroCount(newPomodoroCount);
       
-      toast({ 
-        title: 'Great work! 🎉', 
-        description: 'Pomodoro complete! Take a 5 minute break.' 
-      });
+      // Check if it's time for a long break
+      const shouldTakeLongBreak = newPomodoroCount % POMODOROS_BEFORE_LONG_BREAK === 0;
+      
+      if (shouldTakeLongBreak) {
+        showNotification('Amazing work! 🎉', `${POMODOROS_BEFORE_LONG_BREAK} pomodoros complete! Take a 20 minute break.`);
+        toast({ 
+          title: 'Amazing work! 🎉', 
+          description: `${POMODOROS_BEFORE_LONG_BREAK} pomodoros complete! Take a 20 minute break.` 
+        });
+        setIsLongBreak(true);
+        setIsBreak(true);
+        setTimeLeft(LONG_BREAK_TIME);
+      } else {
+        showNotification('Great work! 🎉', 'Pomodoro complete! Take a 5 minute break.');
+        toast({ 
+          title: 'Great work! 🎉', 
+          description: 'Pomodoro complete! Take a 5 minute break.' 
+        });
+        setIsBreak(true);
+        setTimeLeft(SHORT_BREAK_TIME);
+      }
       
       setCurrentSessionId(null);
-      
-      // Switch to break
-      setIsBreak(true);
-      setTimeLeft(BREAK_TIME);
     } else {
       if (settings.soundEnabled) {
         playBreakCompleteSound();
@@ -149,9 +169,10 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
       
       setIsBreak(false);
+      setIsLongBreak(false);
       setTimeLeft(WORK_TIME);
     }
-  }, [isBreak, currentSessionId, toast, settings.soundEnabled, showNotification]);
+  }, [isBreak, isLongBreak, currentSessionId, toast, settings.soundEnabled, showNotification, pomodoroCount]);
 
   const startTimer = useCallback(async () => {
     if (!selectedSubject) {
@@ -230,7 +251,9 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     
     setIsRunning(false);
     setIsBreak(false);
+    setIsLongBreak(false);
     setTimeLeft(WORK_TIME);
+    // Note: pomodoroCount is preserved across resets
     
     // End current session if active
     if (currentSessionId) {
@@ -249,8 +272,9 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const currentBreakTime = isLongBreak ? LONG_BREAK_TIME : SHORT_BREAK_TIME;
   const progress = isBreak 
-    ? ((BREAK_TIME - timeLeft) / BREAK_TIME) * 100
+    ? ((currentBreakTime - timeLeft) / currentBreakTime) * 100
     : ((WORK_TIME - timeLeft) / WORK_TIME) * 100;
 
   return (
@@ -259,9 +283,11 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         timeLeft,
         isRunning,
         isBreak,
+        isLongBreak,
         selectedSubject,
         currentSessionId,
         settings,
+        pomodoroCount,
         setSelectedSubject,
         startTimer,
         pauseTimer,
@@ -269,7 +295,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         formatTime,
         progress,
         WORK_TIME,
-        BREAK_TIME,
+        BREAK_TIME: SHORT_BREAK_TIME,
         updateSettings,
         requestNotificationPermission
       }}

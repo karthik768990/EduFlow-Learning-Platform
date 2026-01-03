@@ -233,7 +233,7 @@ function AppSidebar() {
 
 function MainContent({ children, title }: { children: ReactNode; title: string }) {
   const { theme, toggleTheme } = useTheme();
-  const { isRunning, timeLeft, isBreak, formatTime } = useTimer();
+  const { isRunning, timeLeft, isBreak, isLongBreak, formatTime } = useTimer();
   
   return (
     <main className="flex-1 min-h-screen flex flex-col overflow-x-hidden">
@@ -256,7 +256,7 @@ function MainContent({ children, title }: { children: ReactNode; title: string }
               <Timer size={16} className="animate-pulse" />
               <span className="font-mono">{formatTime(timeLeft)}</span>
               <span className="hidden sm:inline text-xs opacity-70">
-                {isBreak ? 'Break' : 'Focus'}
+                {isBreak ? (isLongBreak ? 'Long Break' : 'Break') : 'Focus'}
               </span>
             </RouterNavLink>
           )}
