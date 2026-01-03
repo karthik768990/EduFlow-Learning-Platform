@@ -1,216 +1,48 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Send, Clock, User, BookOpen, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { MessageCircle, Send, Clock, BookOpen, ChevronDown, ChevronUp, HelpCircle, Trash2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useDoubts } from '@/hooks/useDoubts';
 import styles from '@/styles/pages/Doubts.module.css';
-
-interface Doubt {
-  id: string;
-  question: string;
-  student_id: string;
-  assignment_id: string;
-  created_at: string;
-  assignment?: { title: string };
-  student?: { full_name: string; avatar_url: string | null };
-  replies: Reply[];
-}
-
-interface Reply {
-  id: string;
-  reply: string;
-  teacher_id: string;
-  created_at: string;
-  teacher?: { full_name: string; avatar_url: string | null };
-}
-
-interface Assignment {
-  id: string;
-  title: string;
-}
 
 export default function Doubts() {
   const { user, role } = useAuth();
-  const { toast } = useToast();
+  const { doubts, assignments, isLoading, createDoubt, deleteDoubt, sendReply, isSubmitting } = useDoubts();
   
-  const [doubts, setDoubts] = useState<Doubt[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [expandedDoubt, setExpandedDoubt] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [showAskForm, setShowAskForm] = useState(false);
   const [newDoubt, setNewDoubt] = useState({ assignment_id: '', question: '' });
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchDoubts();
-    if (role === 'student') {
-      fetchAssignments();
-    }
-  }, [user, role]);
-
-  const fetchDoubts = async () => {
-    setLoading(true);
-    
-    // Fetch doubts
-    let query = supabase.from('doubts').select('*').order('created_at', { ascending: false });
-    
-    if (role === 'student') {
-      query = query.eq('student_id', user!.id);
-    }
-    
-    const { data: doubtsData, error } = await query;
-    
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to load doubts', variant: 'destructive' });
-      setLoading(false);
-      return;
-    }
-    
-    if (!doubtsData || doubtsData.length === 0) {
-      setDoubts([]);
-      setLoading(false);
-      return;
-    }
-    
-    // Fetch related data
-    const assignmentIds = [...new Set(doubtsData.map(d => d.assignment_id))];
-    const studentIds = [...new Set(doubtsData.map(d => d.student_id))];
-    const doubtIds = doubtsData.map(d => d.id);
-    
-    const [assignmentsRes, studentsRes, repliesRes] = await Promise.all([
-      supabase.from('assignments').select('id, title').in('id', assignmentIds),
-      supabase.from('profiles').select('id, full_name, avatar_url').in('id', studentIds),
-      supabase.from('doubt_replies').select('*').in('doubt_id', doubtIds).order('created_at', { ascending: true })
-    ]);
-    
-    // Fetch teacher profiles for replies
-    const teacherIds = [...new Set((repliesRes.data || []).map(r => r.teacher_id))];
-    const teachersRes = teacherIds.length > 0 
-      ? await supabase.from('profiles').select('id, full_name, avatar_url').in('id', teacherIds)
-      : { data: [] };
-    
-    // Build enriched doubts
-    const enrichedDoubts: Doubt[] = doubtsData.map(doubt => {
-      const assignment = assignmentsRes.data?.find(a => a.id === doubt.assignment_id);
-      const student = studentsRes.data?.find(s => s.id === doubt.student_id);
-      const replies = (repliesRes.data || [])
-        .filter(r => r.doubt_id === doubt.id)
-        .map(reply => ({
-          ...reply,
-          teacher: teachersRes.data?.find(t => t.id === reply.teacher_id)
-        }));
-      
-      return {
-        ...doubt,
-        assignment: assignment ? { title: assignment.title } : undefined,
-        student: student ? { full_name: student.full_name || 'Student', avatar_url: student.avatar_url } : undefined,
-        replies
-      };
-    });
-    
-    setDoubts(enrichedDoubts);
-    setLoading(false);
-  };
-
-  const fetchAssignments = async () => {
-    const { data } = await supabase
-      .from('assignments')
-      .select('id, title')
-      .order('created_at', { ascending: false });
-    setAssignments(data || []);
-  };
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleAskDoubt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDoubt.assignment_id || !newDoubt.question.trim()) {
-      toast({ title: 'Required', description: 'Please select an assignment and enter your question', variant: 'destructive' });
-      return;
-    }
+    if (!newDoubt.assignment_id || !newDoubt.question.trim()) return;
     
-    setSubmitting(true);
-    const { error } = await supabase.from('doubts').insert({
-      student_id: user!.id,
-      assignment_id: newDoubt.assignment_id,
-      question: newDoubt.question.trim()
-    });
-    
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to submit question', variant: 'destructive' });
-    } else {
-      toast({ title: 'Success', description: 'Your question has been submitted!' });
-      setNewDoubt({ assignment_id: '', question: '' });
-      setShowAskForm(false);
-      fetchDoubts();
-    }
-    setSubmitting(false);
+    await createDoubt({ assignment_id: newDoubt.assignment_id, question: newDoubt.question });
+    setNewDoubt({ assignment_id: '', question: '' });
+    setShowAskForm(false);
   };
 
   const handleReply = async (doubtId: string) => {
     const text = replyText[doubtId]?.trim();
-    if (!text) {
-      toast({ title: 'Required', description: 'Please enter a reply', variant: 'destructive' });
-      return;
+    if (!text) return;
+    
+    await sendReply({ doubtId, reply: text });
+    setReplyText(prev => ({ ...prev, [doubtId]: '' }));
+  };
+
+  const handleDelete = async (doubtId: string) => {
+    if (!confirm('Are you sure you want to delete this question? This action cannot be undone.')) return;
+    
+    setDeletingId(doubtId);
+    try {
+      await deleteDoubt(doubtId);
+    } finally {
+      setDeletingId(null);
     }
-    
-    setSubmitting(true);
-    
-    // Find the doubt to get student info
-    const doubt = doubts.find(d => d.id === doubtId);
-    
-    const { error } = await supabase.from('doubt_replies').insert({
-      doubt_id: doubtId,
-      teacher_id: user!.id,
-      reply: text
-    });
-    
-    if (error) {
-      toast({ title: 'Error', description: 'Failed to send reply', variant: 'destructive' });
-    } else {
-      toast({ title: 'Success', description: 'Reply sent!' });
-      setReplyText(prev => ({ ...prev, [doubtId]: '' }));
-      fetchDoubts();
-      
-      // Send email notification in background
-      if (doubt) {
-        // Get student email
-        const { data: studentProfile } = await supabase
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', doubt.student_id)
-          .single();
-        
-        // Get teacher name
-        const { data: teacherProfile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user!.id)
-          .single();
-        
-        if (studentProfile?.email) {
-          supabase.functions.invoke('send-reply-notification', {
-            body: {
-              studentEmail: studentProfile.email,
-              studentName: studentProfile.full_name || 'Student',
-              teacherName: teacherProfile?.full_name || 'Your teacher',
-              assignmentTitle: doubt.assignment?.title || 'Assignment',
-              question: doubt.question,
-              reply: text
-            }
-          }).then(({ error: emailError }) => {
-            if (emailError) {
-              console.error('Failed to send email notification:', emailError);
-            } else {
-              console.log('Email notification sent successfully');
-            }
-          });
-        }
-      }
-    }
-    setSubmitting(false);
   };
 
   const getInitials = (name: string) => {
@@ -274,7 +106,7 @@ export default function Doubts() {
                 <button type="button" className={styles.cancelButton} onClick={() => setShowAskForm(false)}>
                   Cancel
                 </button>
-                <button type="submit" className={styles.submitButton} disabled={submitting}>
+                <button type="submit" className={styles.submitButton} disabled={isSubmitting}>
                   <Send size={16} />
                   Submit Question
                 </button>
@@ -284,7 +116,7 @@ export default function Doubts() {
         </AnimatePresence>
 
         {/* Doubts List */}
-        {loading ? (
+        {isLoading ? (
           <div className={styles.loadingState}>
             <div className={styles.spinner} />
             <p>Loading questions...</p>
@@ -314,6 +146,7 @@ export default function Doubts() {
                   className={`${styles.doubtCard} ${doubt.replies.length > 0 ? styles.answered : ''}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -100 }}
                   transition={{ delay: index * 0.05 }}
                 >
                   <div className={styles.doubtHeader} onClick={() => setExpandedDoubt(expandedDoubt === doubt.id ? null : doubt.id)}>
@@ -354,9 +187,26 @@ export default function Doubts() {
                     {doubt.question}
                   </div>
                   
-                  <div className={styles.timestamp}>
-                    <Clock size={12} />
-                    {formatDistanceToNow(new Date(doubt.created_at), { addSuffix: true })}
+                  <div className={styles.doubtFooter}>
+                    <div className={styles.timestamp}>
+                      <Clock size={12} />
+                      {formatDistanceToNow(new Date(doubt.created_at), { addSuffix: true })}
+                    </div>
+                    
+                    {role === 'student' && doubt.student_id === user?.id && (
+                      <button 
+                        className={styles.deleteButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(doubt.id);
+                        }}
+                        disabled={deletingId === doubt.id}
+                        title="Delete question"
+                      >
+                        <Trash2 size={14} />
+                        {deletingId === doubt.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    )}
                   </div>
 
                   <AnimatePresence>
@@ -404,7 +254,7 @@ export default function Doubts() {
                             <button 
                               className={styles.replyButton}
                               onClick={() => handleReply(doubt.id)}
-                              disabled={submitting || !replyText[doubt.id]?.trim()}
+                              disabled={isSubmitting || !replyText[doubt.id]?.trim()}
                             >
                               <Send size={16} />
                               Send Reply
