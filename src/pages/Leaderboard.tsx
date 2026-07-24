@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Medal, Award, Clock, CheckCircle, TrendingUp, Calendar } from 'lucide-react';
 import { startOfWeek, startOfMonth, isAfter } from 'date-fns';
@@ -52,9 +52,9 @@ export default function Leaderboard() {
   useEffect(() => {
     fetchLeaderboard();
     fetchTopAchievers();
-  }, [timePeriod]);
+  }, [timePeriod, fetchLeaderboard, fetchTopAchievers]);
 
-  const fetchTopAchievers = async () => {
+  const fetchTopAchievers = useCallback(async () => {
     // Fetch all achievements with user info
     const { data: allAchievements } = await supabase
       .from('user_achievements')
@@ -123,9 +123,9 @@ export default function Leaderboard() {
     });
 
     setTopAchievers(achievers.slice(0, 5)); // Top 5 achievers
-  };
+  }, []);
 
-  const getStartDate = (): Date | null => {
+  const getStartDate = useCallback(() => {
     const now = new Date();
     if (timePeriod === 'week') {
       return startOfWeek(now, { weekStartsOn: 1 });
@@ -133,9 +133,9 @@ export default function Leaderboard() {
       return startOfMonth(now);
     }
     return null;
-  };
+  }, [timePeriod]);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     
     const startDate = getStartDate();
@@ -239,7 +239,7 @@ export default function Leaderboard() {
     
     setLeaderboard(entries);
     setLoading(false);
-  };
+  }, [getStartDate]);
 
   const getSortedLeaderboard = () => {
     const sorted = [...leaderboard];
@@ -391,7 +391,7 @@ export default function Leaderboard() {
             <button
               key={tab.id}
               className={`${styles.tab} ${activeTab === tab.id ? styles.active : ''}`}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as 'overall' | 'assignments' | 'study')}
             >
               <tab.icon size={16} />
               {tab.label}

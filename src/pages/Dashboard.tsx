@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -31,10 +31,10 @@ export default function Dashboard() {
   const { user, role } = useAuth();
   const [stats, setStats] = useState({ assignments: 0, completed: 0, studyTime: 0, rank: 0 });
   const [teacherStats, setTeacherStats] = useState({ totalAssignments: 0, pendingDoubts: 0, todaySubmissions: 0, totalStudents: 0 });
-  const [weeklyData, setWeeklyData] = useState<any[]>([]);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [weeklyData, setWeeklyData] = useState<{day: string; hours: number}[]>([]);
+  const [leaderboard, setLeaderboard] = useState<{id: string; full_name: string; avatar_url?: string; count: number}[]>([]);
   const [earnedAchievements, setEarnedAchievements] = useState<string[]>([]);
-  const [nextAchievement, setNextAchievement] = useState<any>(null);
+  const [nextAchievement, setNextAchievement] = useState<typeof ACHIEVEMENTS[0] & { progress: number; current: number } | null>(null);
   const [achievementProgress, setAchievementProgress] = useState(0);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
@@ -52,7 +52,7 @@ export default function Dashboard() {
         fetchAchievements();
       }
     }
-  }, [user, role]);
+  }, [user, role, fetchProfile, fetchWeeklyData, fetchLeaderboard, fetchTeacherStats, fetchRecentActivity, fetchStats, fetchAchievements]);
 
   // Real-time updates for teacher dashboard
   useEffect(() => {
@@ -92,23 +92,25 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, role]);
+  }, [user, role, fetchTeacherStats, fetchRecentActivity, fetchLeaderboard]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
     const { data } = await supabase
       .from('profiles')
       .select('full_name')
-      .eq('id', user!.id)
+      .eq('id', user.id)
       .maybeSingle();
     
     setProfileName(data?.full_name || null);
-  };
+  }, [user]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
+    if (!user) return;
     const [assignmentsRes, submissionsRes, sessionsRes] = await Promise.all([
       supabase.from('assignments').select('id', { count: 'exact' }),
-      supabase.from('submissions').select('id', { count: 'exact' }).eq('student_id', user!.id),
-      supabase.from('study_sessions').select('start_time, end_time').eq('user_id', user!.id).not('end_time', 'is', null)
+      supabase.from('submissions').select('id', { count: 'exact' }).eq('student_id', user.id),
+      supabase.from('study_sessions').select('start_time, end_time').eq('user_id', user.id).not('end_time', 'is', null)
     ]);
 
     const totalMinutes = (sessionsRes.data || []).reduce((acc, s) => {
@@ -123,9 +125,10 @@ export default function Dashboard() {
       studyTime: Math.round(totalMinutes),
       rank: 1
     });
-  };
+  }, [user]);
 
-  const fetchTeacherStats = async () => {
+  const fetchTeacherStats = useCallback(async () => {
+    if (!user) return;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -133,7 +136,7 @@ export default function Dashboard() {
     const { count: assignmentsCount } = await supabase
       .from('assignments')
       .select('id', { count: 'exact' })
-      .eq('teacher_id', user!.id);
+      .eq('teacher_id', user.id);
 
     // Get all doubts and check which have replies
     const { data: allDoubts } = await supabase
@@ -166,9 +169,10 @@ export default function Dashboard() {
       todaySubmissions: todaySubmissionsCount || 0,
       totalStudents: uniqueStudents.size
     });
-  };
+  }, [user]);
 
-  const fetchWeeklyData = async () => {
+  const fetchWeeklyData = useCallback(async () => {
+    if (!user) return;
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
     // Get date range for the past 7 days
@@ -181,7 +185,7 @@ export default function Dashboard() {
     const { data: sessions } = await supabase
       .from('study_sessions')
       .select('start_time, end_time')
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
       .not('end_time', 'is', null)
       .gte('start_time', weekAgo.toISOString())
       .lte('start_time', today.toISOString());
@@ -216,9 +220,9 @@ export default function Dashboard() {
     }
 
     setWeeklyData(orderedData);
-  };
+  }, [user]);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     // Get submission counts per student
     const { data: submissions } = await supabase
       .from('submissions')
@@ -259,14 +263,15 @@ export default function Dashboard() {
     });
 
     setLeaderboard(leaderboardData);
-  };
+  }, []);
 
-  const fetchAchievements = async () => {
+  const fetchAchievements = useCallback(async () => {
+    if (!user) return;
     // Fetch earned achievements
     const { data: achievements } = await supabase
       .from('user_achievements')
       .select('achievement_key, earned_at')
-      .eq('user_id', user!.id)
+      .eq('user_id', user.id)
       .order('earned_at', { ascending: false });
     
     const earnedKeys = (achievements || []).map(a => a.achievement_key);
@@ -274,8 +279,8 @@ export default function Dashboard() {
     
     // Get user stats for progress calculation
     const [submissionsRes, sessionsRes] = await Promise.all([
-      supabase.from('submissions').select('id').eq('student_id', user!.id),
-      supabase.from('study_sessions').select('start_time, end_time').eq('user_id', user!.id).not('end_time', 'is', null)
+      supabase.from('submissions').select('id').eq('student_id', user.id),
+      supabase.from('study_sessions').select('start_time, end_time').eq('user_id', user.id).not('end_time', 'is', null)
     ]);
     
     const completedAssignments = submissionsRes.data?.length || 0;
@@ -297,9 +302,9 @@ export default function Dashboard() {
       setNextAchievement(sorted[0]);
       setAchievementProgress(sorted[0].progress);
     }
-  };
+  }, [user]);
 
-  const fetchRecentActivity = async () => {
+  const fetchRecentActivity = useCallback(async () => {
     // Fetch recent submissions
     const { data: submissions } = await supabase
       .from('submissions')
@@ -357,7 +362,7 @@ export default function Dashboard() {
     // Sort by timestamp and take top 5
     activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     setRecentActivity(activities.slice(0, 5));
-  };
+  }, []);
 
   const getRankClass = (i: number) => {
     if (i === 0) return styles.gold;
@@ -457,7 +462,7 @@ export default function Dashboard() {
             </div>
             <div className={styles.sectionContent}>
               <div className={styles.leaderboardList}>
-                {leaderboard.length > 0 ? leaderboard.map((student: any, i) => (
+                {leaderboard.length > 0 ? leaderboard.map((student, i) => (
                   <div key={i} className={styles.leaderboardItem}>
                     <div className={`${styles.rank} ${getRankClass(i)}`}>{i + 1}</div>
                     <div className={styles.leaderboardAvatar}>{student.full_name?.[0] || 'S'}</div>

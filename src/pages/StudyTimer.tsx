@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, RotateCcw, Coffee, BookOpen, Clock, BarChart3, PieChart as PieChartIcon, Volume2, VolumeX, Bell, BellOff, Settings } from 'lucide-react';
 import { format, formatDistanceToNow, subDays, startOfDay, endOfDay } from 'date-fns';
@@ -10,6 +10,16 @@ import { supabase } from '@/integrations/supabase/client';
 import styles from '@/styles/pages/StudyTimer.module.css';
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'History', 'Programming', 'Art', 'Other'];
+
+const SUBJECT_COLORS: Record<string, string> = {
+  'Mathematics': '#2563eb',
+  'Science': '#10b981',
+  'English': '#f59e0b',
+  'History': '#8b5cf6',
+  'Programming': '#06b6d4',
+  'Art': '#ec4899',
+  'Other': '#6b7280'
+};
 
 interface Session {
   id: string;
@@ -53,19 +63,11 @@ export default function StudyTimer() {
     fetchSessions();
     fetchWeeklyData();
     fetchSubjectData();
-  }, [user, isRunning]);
+  }, [user, isRunning, fetchSessions, fetchWeeklyData, fetchSubjectData]);
 
-  const SUBJECT_COLORS: Record<string, string> = {
-    'Mathematics': '#2563eb',
-    'Science': '#10b981',
-    'English': '#f59e0b',
-    'History': '#8b5cf6',
-    'Programming': '#06b6d4',
-    'Art': '#ec4899',
-    'Other': '#6b7280'
-  };
 
-  const fetchSessions = async () => {
+
+  const fetchSessions = useCallback(async () => {
     if (!user) return;
     
     const today = new Date();
@@ -97,9 +99,9 @@ export default function StudyTimer() {
     }, 0);
     
     setTotalToday(Math.round(totalMinutes));
-  };
+  }, [user]);
 
-  const fetchWeeklyData = async () => {
+  const fetchWeeklyData = useCallback(async () => {
     if (!user) return;
     
     const today = new Date();
@@ -136,9 +138,9 @@ export default function StudyTimer() {
     });
     
     setWeeklyData(days);
-  };
+  }, [user]);
 
-  const fetchSubjectData = async () => {
+  const fetchSubjectData = useCallback(async () => {
     if (!user) return;
     
     const { data } = await supabase
@@ -165,7 +167,7 @@ export default function StudyTimer() {
       .sort((a, b) => b.value - a.value);
     
     setSubjectData(chartData);
-  };
+  }, [user]);
 
   const circumference = 2 * Math.PI * 120;
   const strokeDashoffset = circumference - (progress / 100) * circumference;

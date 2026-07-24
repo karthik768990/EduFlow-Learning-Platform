@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, Send, Clock, User, BookOpen, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -50,16 +50,17 @@ export default function Doubts() {
     if (role === 'student') {
       fetchAssignments();
     }
-  }, [user, role]);
+  }, [user, role, fetchDoubts, fetchAssignments]);
 
-  const fetchDoubts = async () => {
+  const fetchDoubts = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     
     // Fetch doubts
     let query = supabase.from('doubts').select('*').order('created_at', { ascending: false });
     
     if (role === 'student') {
-      query = query.eq('student_id', user!.id);
+      query = query.eq('student_id', user.id);
     }
     
     const { data: doubtsData, error } = await query;
@@ -114,15 +115,15 @@ export default function Doubts() {
     
     setDoubts(enrichedDoubts);
     setLoading(false);
-  };
+  }, [user, role, toast]);
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     const { data } = await supabase
       .from('assignments')
       .select('id, title')
       .order('created_at', { ascending: false });
     setAssignments(data || []);
-  };
+  }, []);
 
   const handleAskDoubt = async (e: React.FormEvent) => {
     e.preventDefault();

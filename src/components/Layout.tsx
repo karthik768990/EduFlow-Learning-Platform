@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useCallback } from 'react';
 import { NavLink as RouterNavLink, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, LayoutDashboard, FileText, Clock, Trophy, MessageCircle, LogOut, HelpCircle, Settings, Award, Sun, Moon, PanelLeftClose, PanelLeft, Timer } from 'lucide-react';
@@ -54,9 +54,10 @@ function AppSidebar() {
     if (user) {
       fetchProfile();
     }
-  }, [user]);
+  }, [user, fetchProfile]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
     const { data } = await supabase
       .from('profiles')
       .select('full_name, avatar_url')
@@ -66,7 +67,7 @@ function AppSidebar() {
     if (data) {
       setProfileData({ full_name: data.full_name, avatar_url: data.avatar_url });
     }
-  };
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();

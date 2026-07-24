@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Trophy, Target, Clock, BookOpen, Flame, Star, 
@@ -291,9 +291,49 @@ function StudentAchievementsView() {
     if (user) {
       fetchData();
     }
-  }, [user]);
+  }, [user, fetchData]);
 
-  const fetchData = async () => {
+  const checkAndAwardAchievements = useCallback(async (
+    currentlyEarned: string[], 
+    assignments: number, 
+    studyHours: number
+  ) => {
+    if (!user) return;
+    const newAchievements: string[] = [];
+    
+    for (const achievement of ACHIEVEMENTS) {
+      if (currentlyEarned.includes(achievement.key)) continue;
+      
+      let earned = false;
+      if (achievement.type === 'assignments' && assignments >= achievement.requirement) {
+        earned = true;
+      } else if (achievement.type === 'study_hours' && studyHours >= achievement.requirement) {
+        earned = true;
+      }
+      
+      if (earned) {
+        const { error } = await supabase.from('user_achievements').insert({
+          user_id: user.id,
+          achievement_key: achievement.key
+        });
+        
+        if (!error) {
+          newAchievements.push(achievement.key);
+          setEarnedAchievements(prev => [...prev, achievement.key]);
+          
+          // Show toast notification
+          toast({
+            title: 'Achievement Unlocked! 🏆',
+            description: `You earned: ${achievement.title}`,
+            duration: 5000,
+          });
+        }
+      }
+    }
+  }, [user, toast]);
+
+  const fetchData = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     
     // Fetch earned achievements
@@ -322,45 +362,7 @@ function StudentAchievementsView() {
     await checkAndAwardAchievements(earnedKeys, assignmentCount, studyMinutes / 60);
     
     setLoading(false);
-  };
-
-  const checkAndAwardAchievements = async (
-    currentlyEarned: string[], 
-    assignments: number, 
-    studyHours: number
-  ) => {
-    const newAchievements: string[] = [];
-    
-    for (const achievement of ACHIEVEMENTS) {
-      if (currentlyEarned.includes(achievement.key)) continue;
-      
-      let earned = false;
-      if (achievement.type === 'assignments' && assignments >= achievement.requirement) {
-        earned = true;
-      } else if (achievement.type === 'study_hours' && studyHours >= achievement.requirement) {
-        earned = true;
-      }
-      
-      if (earned) {
-        const { error } = await supabase.from('user_achievements').insert({
-          user_id: user!.id,
-          achievement_key: achievement.key
-        });
-        
-        if (!error) {
-          newAchievements.push(achievement.key);
-          toast({
-            title: '🎉 Achievement Unlocked!',
-            description: `${achievement.title}: ${achievement.description}`,
-          });
-        }
-      }
-    }
-    
-    if (newAchievements.length > 0) {
-      setEarnedAchievements(prev => [...prev, ...newAchievements]);
-    }
-  };
+  }, [user, checkAndAwardAchievements]);
 
   const getProgress = (achievement: Achievement) => {
     if (achievement.type === 'assignments') {

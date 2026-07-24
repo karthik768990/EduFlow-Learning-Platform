@@ -51,7 +51,9 @@ const loadSettings = (): TimerSettings => {
     if (saved) {
       return JSON.parse(saved);
     }
-  } catch {}
+  } catch (error) {
+    console.error('Failed to parse timer settings:', error);
+  }
   return { soundEnabled: true, notificationsEnabled: false };
 };
 

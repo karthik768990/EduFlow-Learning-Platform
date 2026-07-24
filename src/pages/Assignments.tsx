@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Calendar as CalendarIcon, Clock, CheckCircle, Edit2, Trash2, X, Send, FileText, List, Grid3X3 } from 'lucide-react';
 import { format, isPast, formatDistanceToNow, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
@@ -64,14 +64,15 @@ export default function Assignments() {
     if (role === 'student') {
       fetchSubmissions();
     }
-  }, [user, role]);
+  }, [user, role, fetchAssignments, fetchSubmissions]);
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     let query = supabase.from('assignments').select('*').order('due_date', { ascending: true });
     
     if (role === 'teacher') {
-      query = query.eq('teacher_id', user!.id);
+      query = query.eq('teacher_id', user.id);
     }
     
     const { data, error } = await query;
@@ -81,15 +82,16 @@ export default function Assignments() {
       setAssignments(data || []);
     }
     setLoading(false);
-  };
+  }, [user, role, toast]);
 
-  const fetchSubmissions = async () => {
+  const fetchSubmissions = useCallback(async () => {
+    if (!user) return;
     const { data } = await supabase
       .from('submissions')
       .select('*')
-      .eq('student_id', user!.id);
+      .eq('student_id', user.id);
     setSubmissions(data || []);
-  };
+  }, [user]);
 
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -120,8 +120,9 @@ export default function Auth() {
     return Object.keys(errors).length === 0;
   };
 
-  const getErrorMessage = (error: any): string => {
-    const message = error?.message?.toLowerCase() || '';
+  const getErrorMessage = (error: Error | { message?: string } | unknown): string => {
+    const err = error as { message?: string };
+    const message = err?.message?.toLowerCase() || '';
     
     if (message.includes('invalid login credentials')) {
       return 'Invalid email or password. Please try again.';
@@ -163,7 +164,7 @@ export default function Auth() {
         setPassword('');
         setSuccessMessage('Account created! You can now sign in.');
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
@@ -187,7 +188,7 @@ export default function Auth() {
         setSuccessMessage('Password reset email sent! Check your inbox.');
         setEmail('');
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
@@ -216,7 +217,7 @@ export default function Auth() {
           window.location.href = '/dashboard';
         }, 1500);
       }
-    } catch (err: any) {
+    } catch (err) {
       setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
@@ -228,8 +229,8 @@ export default function Auth() {
     setError('');
     try {
       await signInWithGoogle();
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in with Google');
+    } catch (err) {
+      setError((err as Error).message || 'Failed to sign in with Google');
       setIsLoading(false);
     }
   };
@@ -239,8 +240,8 @@ export default function Auth() {
     setIsLoading(true);
     try {
       await setUserRole(selectedRole);
-    } catch (err: any) {
-      setError(err.message || 'Failed to set role');
+    } catch (err) {
+      setError((err as Error).message || 'Failed to set role');
       setIsLoading(false);
     }
   };

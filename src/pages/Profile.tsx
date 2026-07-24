@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Save, User, Mail, Loader2, Trophy } from 'lucide-react';
 import Layout from '@/components/Layout';
@@ -37,9 +37,10 @@ export default function Profile() {
       fetchProfile();
       fetchHighestAchievement();
     }
-  }, [user]);
+  }, [user, fetchProfile, fetchHighestAchievement]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
@@ -52,9 +53,10 @@ export default function Profile() {
       setAvatarUrl(data.avatar_url);
     }
     setLoading(false);
-  };
+  }, [user]);
 
-  const fetchHighestAchievement = async () => {
+  const fetchHighestAchievement = useCallback(async () => {
+    if (!user) return;
     const { data } = await supabase
       .from('user_achievements')
       .select('achievement_key')
@@ -73,7 +75,7 @@ export default function Profile() {
         setHighestAchievement({ label: highest.label, icon: highest.icon });
       }
     }
-  };
+  }, [user]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
